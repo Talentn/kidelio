@@ -4,7 +4,7 @@ services:
       context: ../api
       dockerfile: Dockerfile
     ports:
-      - "4000:80"         # host:container — change 4000 if that port is taken on your VPS
+      - "7675:80"         # host:container
     env_file: .env.production
     volumes:
       - ../api/storage:/rails/storage   # SQLite DBs + Active Storage uploads
