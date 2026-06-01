@@ -34,7 +34,7 @@
 /node_modules/
 /app/assets/builds/*
 !/app/assets/builds/.keep
-/public/assets
+# public/assets is intentionally NOT ignored — React build is copied here before docker build
 
 # Ignore CI service files.
 /.github
