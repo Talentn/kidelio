@@ -1,0 +1,12 @@
+<h1>Commandes</h1>
+<table class="table">
+  <tr><th>N°</th><th>Client</th><th>Total</th><th>Statut</th></tr>
+  <% @orders.each do |o| %>
+    <tr>
+      <td><%= link_to o.order_number, admin_order_path(o) %></td>
+      <td><%= o.guest_name %> — <%= o.guest_phone %></td>
+      <td><%= number_to_currency(o.total, unit: " TND", format: "%n%u", precision: 3) %></td>
+      <td><%= o.status %></td>
+    </tr>
+  <% end %>
+</table>

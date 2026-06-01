@@ -1,0 +1,17 @@
+services:
+  web:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    ports:
+      - "4000:80"         # host:container — change 4000 if that port is taken on your VPS
+    env_file: .env.production
+    volumes:
+      - ../api/storage:/rails/storage   # SQLite DBs + Active Storage uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

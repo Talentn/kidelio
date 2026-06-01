@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <title>Admin — Kids Shop</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="admin-body">
+    <% if Current.user&.staff? %>
+      <div class="admin-shell">
+        <aside class="admin-sidebar">
+          <strong class="admin-brand">Kids Shop Admin</strong>
+          <nav>
+            <%= link_to "Dashboard", admin_root_path %>
+            <%= link_to "Produits", admin_products_path %>
+            <%= link_to "Commandes", admin_orders_path %>
+            <%= link_to "Activité", admin_activity_logs_path %>
+            <%= link_to "Boutique", root_path %>
+          </nav>
+          <%= button_to "Déconnexion", admin_session_path, method: :delete, class: "btn-link" %>
+        </aside>
+        <main class="admin-content">
+          <%= render "shared/flash" %>
+          <%= yield %>
+        </main>
+      </div>
+    <% else %>
+      <%= render "shared/flash" %>
+      <%= yield %>
+    <% end %>
+  </body>
+</html>

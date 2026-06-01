@@ -1,0 +1,18 @@
+<% content_for :title, "Produits — Kids Shop" %>
+<h1>Boutique</h1>
+
+<%= form_with url: store_products_path, method: :get, class: "search-bar" do %>
+  <%= text_field_tag :q, params[:q], placeholder: "Rechercher..." %>
+  <%= submit_tag "OK", class: "btn btn-primary" %>
+<% end %>
+
+<div class="category-chips">
+  <%= link_to "Tous", store_products_path, class: "chip #{'active' unless params[:category]}" %>
+  <% @categories.each do |c| %>
+    <%= link_to c.name, store_products_path(category: c.id), class: "chip #{'active' if params[:category].to_s == c.id.to_s}" %>
+  <% end %>
+</div>
+
+<div class="product-grid">
+  <%= render partial: "shared/product_card", collection: @products, as: :product %>
+</div>

@@ -1,0 +1,19 @@
+<h1>Tableau de bord</h1>
+<div class="stats-grid">
+  <div class="stat-card"><span>Commandes aujourd'hui</span><strong><%= @stats[:orders_today] %></strong></div>
+  <div class="stat-card"><span>CA aujourd'hui</span><strong><%= number_to_currency(@stats[:revenue_today], unit: " TND", format: "%n%u", precision: 3) %></strong></div>
+  <div class="stat-card warn"><span>En attente</span><strong><%= @stats[:pending_orders] %></strong></div>
+  <div class="stat-card warn"><span>Stock bas</span><strong><%= @stats[:low_stock] %></strong></div>
+</div>
+
+<h2>Dernières commandes</h2>
+<table class="table">
+  <tr><th>N°</th><th>Total</th><th>Statut</th></tr>
+  <% @recent_orders.each do |o| %>
+    <tr>
+      <td><%= link_to o.order_number, admin_order_path(o) %></td>
+      <td><%= number_to_currency(o.total, unit: " TND", format: "%n%u", precision: 3) %></td>
+      <td><%= o.status %></td>
+    </tr>
+  <% end %>
+</table>

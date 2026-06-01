@@ -1,0 +1,4 @@
+<h1><%= @product.name %></h1>
+<p><%= format_tnd(@product.effective_price) %> — Stock: <%= @product.stock %></p>
+<%= link_to "Modifier", edit_admin_product_path(@product), class: "btn btn-primary" %>
+<%= link_to "← Liste", admin_products_path %>

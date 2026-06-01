@@ -1,0 +1,7 @@
+<%= link_to store_product_path(product.slug), class: "product-card" do %>
+  <%= product_image(product) %>
+  <h3><%= product.name %></h3>
+  <% if product.age_group.present? %><span class="tag"><%= product.age_group %></span><% end %>
+  <p class="price"><%= format_tnd(product.effective_price) %></p>
+  <% unless product.in_stock? %><span class="out-of-stock">Rupture</span><% end %>
+<% end %>

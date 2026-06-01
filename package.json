@@ -1,0 +1,19 @@
+{
+  "name": "kids-shop",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:stop": "node scripts/stop-dev.js",
+    "dev:restart": "node scripts/stop-dev.js && node scripts/dev.js",
+    "dev:kill-api": "node -e \"try{process.kill(require('fs').readFileSync('api/tmp/pids/server.pid','utf8').trim(),'SIGTERM')}catch(e){}\"",
+    "start": "npm run dev",
+    "dev:foreman": "npx foreman start -f Procfile",
+    "setup": "cd api && bundle install && rails db:prepare db:seed && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build && node ../scripts/copy-build.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "foreman": "^3.0.1",
+    "wait-on": "^8.0.1"
+  }
+}

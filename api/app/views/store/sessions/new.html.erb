@@ -1,0 +1,7 @@
+<h1>Connexion</h1>
+<%= form_with url: store_session_path do %>
+  <%= email_field_tag :email, nil, placeholder: "Email", required: true %>
+  <%= password_field_tag :password, nil, placeholder: "Mot de passe", required: true %>
+  <%= submit_tag "Se connecter", class: "btn btn-primary btn-block" %>
+<% end %>
+<p><%= link_to "Créer un compte", new_store_registration_path %></p>

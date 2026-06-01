@@ -1,0 +1,6 @@
+Rails.application.config.session_store :cookie_store,
+  key: "_kids_shop_session",
+  same_site: :lax,
+  secure: Rails.env.production?,
+  httponly: true,
+  expire_after: 30.days

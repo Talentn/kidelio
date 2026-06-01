@@ -1,0 +1,8 @@
+<h1>Contact</h1>
+<%= form_with url: store_contact_path do %>
+  <%= text_field_tag :name, nil, required: true, placeholder: "Nom" %>
+  <%= email_field_tag :email, nil, required: true, placeholder: "Email" %>
+  <%= telephone_field_tag :phone, nil, placeholder: "Téléphone" %>
+  <%= text_area_tag :message, nil, required: true, rows: 5, placeholder: "Message" %>
+  <%= submit_tag "Envoyer", class: "btn btn-primary" %>
+<% end %>

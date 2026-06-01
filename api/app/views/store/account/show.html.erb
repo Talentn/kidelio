@@ -1,0 +1,15 @@
+<h1>Bonjour, <%= current_user.name %></h1>
+<p>Points fidélité: <%= current_user.fidelity_points %></p>
+<h2>Mes commandes</h2>
+<% if @orders.empty? %>
+  <p>Aucune commande.</p>
+<% else %>
+  <ul class="order-list">
+    <% @orders.each do |o| %>
+      <li>
+        <%= link_to o.order_number, store_order_path(o.order_number) %> —
+        <%= o.status %> — <%= format_tnd(o.total) %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

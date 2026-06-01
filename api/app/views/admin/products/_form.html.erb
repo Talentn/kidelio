@@ -1,0 +1,17 @@
+<%= form_with model: product, url: product.persisted? ? admin_product_path(product) : admin_products_path, html: { multipart: true } do |f| %>
+  <%= f.text_field :name, required: true, placeholder: "Nom" %>
+  <%= f.text_field :slug, placeholder: "slug-url" %>
+  <%= f.text_field :reference, placeholder: "Référence" %>
+  <%= f.collection_select :category_id, @categories, :id, :name, include_blank: "Catégorie" %>
+  <%= f.text_area :description, rows: 4 %>
+  <%= f.number_field :price, step: 0.001, required: true %>
+  <%= f.number_field :promo_price, step: 0.001 %>
+  <%= f.number_field :stock, min: 0 %>
+  <%= f.text_field :age_group, placeholder: "ex: 3-6 ans" %>
+  <%= file_field_tag :images, multiple: true, accept: "image/*" %>
+  <label><%= f.check_box :active %> Actif</label>
+  <label><%= f.check_box :featured %> Vedette</label>
+  <label><%= f.check_box :on_promo %> Promo</label>
+  <% if product.errors.any? %><p class="error"><%= product.errors.full_messages.to_sentence %></p><% end %>
+  <%= f.submit class: "btn btn-primary" %>
+<% end %>

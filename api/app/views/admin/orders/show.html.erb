@@ -1,0 +1,15 @@
+<h1>Commande <%= @order.order_number %></h1>
+<p><%= @order.guest_name %> — <%= @order.guest_phone %></p>
+<p><%= @order.shipping_address %>, <%= @order.shipping_delegation %>, <%= @order.shipping_governorate %></p>
+<ul>
+  <% @order.order_items.each do |i| %>
+    <li><%= i.product_name %> × <%= i.quantity %> — <%= format_tnd(i.unit_price * i.quantity) %></li>
+  <% end %>
+</ul>
+<p><strong>Total: <%= format_tnd(@order.total) %></strong></p>
+
+<%= form_with model: [:admin, @order], method: :patch do |f| %>
+  <%= f.select :status, Order.statuses.keys %>
+  <%= f.text_area :notes, rows: 2 %>
+  <%= f.submit "Mettre à jour", class: "btn btn-primary" %>
+<% end %>

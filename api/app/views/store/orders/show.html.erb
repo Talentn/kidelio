@@ -1,0 +1,8 @@
+<% content_for :title, "Commande #{@order.order_number}" %>
+<div class="success-page">
+  <h1>Commande confirmée</h1>
+  <p>Numéro: <strong><%= @order.order_number %></strong></p>
+  <p>Total: <%= format_tnd(@order.total) %></p>
+  <p>Paiement à la livraison. Merci !</p>
+  <%= link_to "Retour à l'accueil", root_path, class: "btn btn-primary" %>
+</div>

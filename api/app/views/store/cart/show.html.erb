@@ -1,0 +1,32 @@
+<% content_for :title, "Panier" %>
+<h1>Mon panier</h1>
+
+<% if @lines.empty? %>
+  <p>Panier vide.</p>
+  <%= link_to "Continuer vos achats", store_products_path, class: "btn btn-primary" %>
+<% else %>
+  <table class="table">
+    <thead><tr><th>Produit</th><th>Prix</th><th>Qté</th><th></th></tr></thead>
+    <tbody>
+      <% @lines.each do |line| %>
+        <tr>
+          <td><%= line[:product].name %></td>
+          <td><%= format_tnd(line[:unit_price]) %></td>
+          <td>
+            <%= form_with url: store_cart_path, method: :patch, class: "inline-form" do %>
+              <%= hidden_field_tag :product_id, line[:product].id %>
+              <%= number_field_tag :quantity, line[:quantity], min: 1, max: line[:product].stock %>
+              <%= submit_tag "↻", class: "btn btn-ghost" %>
+            <% end %>
+          </td>
+          <td>
+            <%= button_to "Retirer", store_cart_path, method: :delete, params: { product_id: line[:product].id }, class: "btn-link danger" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <p class="cart-total">Sous-total: <strong><%= format_tnd(@subtotal) %></strong></p>
+  <p>Livraison: <%= format_tnd(@shipping) %><% if @subtotal >= Order::FREE_SHIPPING_THRESHOLD %> (gratuite ≥ 200 TND)<% end %></p>
+  <%= link_to "Commander", new_store_checkout_path, class: "btn btn-primary btn-lg" %>
+<% end %>

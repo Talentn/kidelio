@@ -1,0 +1,9 @@
+<h1>Inscription</h1>
+<%= form_with model: @user, url: store_registration_path do |f| %>
+  <%= f.text_field :name, placeholder: "Nom", required: true %>
+  <%= f.email_field :email, placeholder: "Email", required: true %>
+  <%= f.password_field :password, placeholder: "Mot de passe (8+)", required: true, minlength: 8 %>
+  <%= f.telephone_field :phone, placeholder: "Téléphone" %>
+  <% if @user.errors.any? %><p class="error"><%= @user.errors.full_messages.to_sentence %></p><% end %>
+  <%= f.submit "Créer mon compte", class: "btn btn-primary btn-block" %>
+<% end %>

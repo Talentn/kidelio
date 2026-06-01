@@ -1,0 +1,30 @@
+<% content_for :title, "Checkout" %>
+<h1>Finaliser la commande</h1>
+
+<%= form_with url: store_checkout_path, class: "checkout-form" do %>
+  <fieldset>
+    <legend>Coordonnées</legend>
+    <%= text_field_tag :guest_name, current_user&.name, placeholder: "Nom complet", required: true %>
+    <%= telephone_field_tag :guest_phone, current_user&.phone, placeholder: "Téléphone", required: true %>
+    <%= email_field_tag :guest_email, current_user&.email, placeholder: "Email (optionnel)" %>
+  </fieldset>
+  <fieldset>
+    <legend>Livraison (Tunisie)</legend>
+    <%= select_tag :shipping_governorate, options_for_select(StoreHelper::GOVERNORATES), prompt: "Gouvernorat", required: true %>
+    <%= text_field_tag :shipping_delegation, nil, placeholder: "Délégation / Ville", required: true %>
+    <%= text_area_tag :shipping_address, nil, placeholder: "Adresse complète", required: true, rows: 3 %>
+  </fieldset>
+  <div class="checkout-summary">
+    <p>Sous-total: <%= format_tnd(@subtotal) %></p>
+    <% if @discount.positive? %><p>Réduction: -<%= format_tnd(@discount) %></p><% end %>
+    <p>Livraison: <%= format_tnd(@shipping) %></p>
+    <p class="price-lg">Total: <%= format_tnd(@subtotal - @discount + @shipping) %></p>
+    <p class="hint">Paiement à la livraison (espèces)</p>
+  </div>
+  <%= submit_tag "Confirmer la commande", class: "btn btn-primary btn-lg" %>
+<% end %>
+
+<%= form_with url: store_checkout_promo_path, method: :post, class: "promo-row" do %>
+  <%= text_field_tag :code, @promo_code, placeholder: "Code promo" %>
+  <%= submit_tag "Appliquer", class: "btn btn-ghost" %>
+<% end %>

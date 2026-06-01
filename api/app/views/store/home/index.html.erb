@@ -1,0 +1,26 @@
+<% content_for :title, "Kids Shop — Accueil" %>
+
+<section class="hero">
+  <h1>Des sourires, des couleurs, des aventures</h1>
+  <p>Vêtements et essentiels pour bébés et enfants — livraison en Tunisie</p>
+  <%= link_to "Découvrir la boutique", store_products_path, class: "btn btn-primary" %>
+</section>
+
+<% if @sliders.any? %>
+  <section class="section">
+    <h2>À la une</h2>
+    <% @sliders.each do |s| %>
+      <div class="slider-card">
+        <h3><%= s.title %></h3>
+        <p><%= s.subtitle %></p>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="section">
+  <h2>Nos coups de cœur</h2>
+  <div class="product-grid">
+    <%= render partial: "shared/product_card", collection: @featured, as: :product %>
+  </div>
+</section>

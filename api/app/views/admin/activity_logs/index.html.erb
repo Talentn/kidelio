@@ -1,0 +1,12 @@
+<h1>Journal d'activité</h1>
+<table class="table">
+  <tr><th>Date</th><th>User</th><th>Action</th><th>Entité</th></tr>
+  <% @logs.each do |log| %>
+    <tr>
+      <td><%= l(log.created_at, format: :short) %></td>
+      <td><%= log.user&.email %></td>
+      <td><code><%= log.action %></code></td>
+      <td><%= log.entity_type %> <%= log.entity_name %></td>
+    </tr>
+  <% end %>
+</table>

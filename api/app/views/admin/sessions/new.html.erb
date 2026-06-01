@@ -1,0 +1,12 @@
+<div class="login-page">
+  <div class="login-card">
+    <h1>Administration</h1>
+    <%= form_with url: admin_session_path do %>
+      <%= email_field_tag :email, nil, required: true, placeholder: "Email" %>
+      <%= password_field_tag :password, nil, required: true, placeholder: "Mot de passe" %>
+      <%= submit_tag "Connexion", class: "btn btn-primary btn-block" %>
+    <% end %>
+    <p class="hint">admin@kids-shop.local / password123</p>
+    <%= link_to "← Boutique", root_path %>
+  </div>
+</div>

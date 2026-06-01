@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+/node_modules/
+api/vendor/bundle
+
+# Env & secrets — NEVER commit these
+.env
+.env.local
+.env.production
+api/.env
+api/.env.production
+deploy/.env.production
+frontend/.env.local
+
+# Rails master key & credentials
+api/config/master.key
+api/config/credentials/*.key
+
+# DB & logs
+api/log/*
+api/tmp/*
+!api/tmp/.keep
+!api/tmp/pids/.keep
+api/storage/*
+!api/storage/.keep
+
+# Build artifacts
+frontend/build/
+web/build/
+admin/build/
+api/public/assets/
+api/public/*.js
+api/public/*.css
+api/public/*.map
+
+# OS
+.DS_Store
+Thumbs.db
