@@ -49,6 +49,9 @@ export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: str
             src={heroImage}
             alt="Kidelio — Mode enfants"
             className="w-full h-full object-cover object-center"
+            loading="eager"
+            fetchPriority="high"
+            decoding="sync"
           />
           <div className="hidden md:block absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#FDF8F5] to-transparent pointer-events-none" />
           <div className="hidden md:flex absolute bottom-8 left-8 bg-white rounded-2xl shadow-lg px-4 py-3 items-center gap-3">

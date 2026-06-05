@@ -16,7 +16,8 @@ module Api
           } : nil,
           communication: "json_rest",
           frontend: "react",
-          google_auth: ENV["GOOGLE_CLIENT_ID"].present? && ENV["GOOGLE_CLIENT_SECRET"].present?,
+          google_auth: (ENV["GOOGLE_CLIENT_ID"].presence || Rails.application.credentials.dig(:google_client_id)).present? &&
+                       (ENV["GOOGLE_CLIENT_SECRET"].presence || Rails.application.credentials.dig(:google_client_secret)).present?,
           urls: {
             site: ENV.fetch("SITE_URL", "http://localhost:3000"),
             admin: ENV.fetch("SITE_URL", "http://localhost:3000") + "/admin",

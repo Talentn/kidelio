@@ -3,7 +3,7 @@
 require "devise/orm/active_record"
 
 Devise.setup do |config|
-  config.mailer_sender = "noreply@kids-shop.local"
+  config.mailer_sender = "noreply@kideliowear.com"
   config.case_insensitive_keys = [:email]
   config.strip_whitespace_keys = [:email]
   config.skip_session_storage = [:http_auth]
@@ -18,10 +18,13 @@ Devise.setup do |config|
   config.responder.error_status = :unprocessable_entity
   config.responder.redirect_status = :see_other
 
-  if ENV["GOOGLE_CLIENT_ID"].present? && ENV["GOOGLE_CLIENT_SECRET"].present?
+  google_id     = ENV["GOOGLE_CLIENT_ID"].presence     || Rails.application.credentials.dig(:google_client_id).presence
+  google_secret = ENV["GOOGLE_CLIENT_SECRET"].presence || Rails.application.credentials.dig(:google_client_secret).presence
+
+  if google_id.present? && google_secret.present?
     config.omniauth :google_oauth2,
-      ENV["GOOGLE_CLIENT_ID"],
-      ENV["GOOGLE_CLIENT_SECRET"],
+      google_id,
+      google_secret,
       scope: "email,profile",
       prompt: "select_account"
   end

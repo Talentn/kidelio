@@ -45,6 +45,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
                 src={s.image_url}
                 alt={s.title || 'Kidelio'}
                 className="w-full h-full object-cover object-center"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                decoding={i === 0 ? 'sync' : 'async'}
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-brand-100 to-sage-100" />

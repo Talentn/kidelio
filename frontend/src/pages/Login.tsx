@@ -148,9 +148,6 @@ export function Login() {
             </Link>
           </p>
 
-          <p className="text-center text-xs text-gray-400 mt-3">
-            Personnel: admin@kids-shop.local / password123
-          </p>
         </div>
       </div>
     </div>
