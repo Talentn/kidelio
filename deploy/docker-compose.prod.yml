@@ -4,13 +4,15 @@ services:
       context: ../api
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:7675:80"
+      - "127.0.0.1:7675:3000"
+    environment:
+      - PORT=3000
     env_file: .env.production
     volumes:
       - ../api/storage:/rails/storage
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/up"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/up"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -25,7 +27,7 @@ services:
     environment:
       - PORT=3010
       - GO_ENV=production
-      - RAILS_URL=http://web:80
+      - RAILS_URL=http://web:3000
       - DB_PATH=/app/data/go-service.db
       - ALLOWED_ORIGINS=https://kideliowear.com
       - SITE_URL=https://kideliowear.com

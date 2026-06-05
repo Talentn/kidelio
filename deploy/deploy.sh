@@ -109,7 +109,7 @@ done
 
 # ── 8. Run database migrations ────────────────────────────────────────────────
 echo "==> Running database migrations..."
-$COMPOSE exec web bin/rails db:migrate
+$COMPOSE exec -T web bin/rails db:prepare
 
 # ── 9. Clean up old Docker images ─────────────────────────────────────────────
 echo "==> Cleaning up dangling Docker images..."
