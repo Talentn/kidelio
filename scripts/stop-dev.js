@@ -5,7 +5,7 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-const PORTS = [3000, 3001];
+const PORTS = [3000, 3001, 3010];
 const PID_FILE = path.join(__dirname, "..", "api", "tmp", "pids", "server.pid");
 
 function killPid(pid, port) {
@@ -71,4 +71,4 @@ if (fs.existsSync(PID_FILE)) {
   console.log("[stop] Removed api/tmp/pids/server.pid");
 }
 
-console.log("[stop] Ports 3000 (React) and 3001 (API) should be free. Run: npm run dev");
+console.log("[stop] Ports 3000 (React), 3001 (API), and 3010 (Go) should be free. Run: npm run dev");

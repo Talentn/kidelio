@@ -94,9 +94,9 @@ module Api
         end
 
         if color&.images&.attached? && color.images.any?
-          return json_image_url(color.images.first)
+          return json_variant_url(color.images.first, size: :thumb)
         end
-        product.images.attached? ? json_image_url(product.images.first) : nil
+        product.images.attached? ? json_variant_url(product.images.first, size: :thumb) : nil
       end
     end
   end

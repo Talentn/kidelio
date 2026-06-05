@@ -45,8 +45,8 @@ module Api
 
       private
 
-      def listing_image_urls(product)
-        product.listing_image_attachments.filter_map { |img| json_image_url(img) }
+      def listing_image_urls(product, size: :medium)
+        product.listing_image_attachments.filter_map { |img| json_variant_url(img, size: size) }
       end
 
       def product_json(product, detail: false)
@@ -63,20 +63,20 @@ module Api
           featured: product.featured,
           age_group: product.age_group,
           category: product.category&.slice(:id, :name, :slug),
-          image_urls: listing_image_urls(product)
+          image_urls: listing_image_urls(product, size: detail ? :large : :medium)
         }
         if detail
           json[:description] = product.description
           json[:colors] = product.colors.map do |c|
-            urls = c.images.map { |img| json_image_url(img) }.compact
+            urls = c.images.map { |img| json_variant_url(img, size: :large) }.compact
             {
-              id:         c.id,
-              name:       c.name,
-              hex:        c.hex,
-              position:   c.position,
-              thumbnail_url: urls.first,
-              image_urls: urls,
-              sizes:      c.sizes.map { |s| { size: s.size, stock: s.stock } }
+              id:            c.id,
+              name:          c.name,
+              hex:           c.hex,
+              position:      c.position,
+              thumbnail_url: json_variant_url(c.images.first, size: :thumb),
+              image_urls:    urls,
+              sizes:         c.sizes.map { |s| { size: s.size, stock: s.stock } }
             }
           end
         end

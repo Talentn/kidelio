@@ -5,7 +5,7 @@ import { ArrowRight, Star, Truck } from 'lucide-react'
 export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: string }) {
   return (
     <section className="relative w-full overflow-hidden bg-[#FDF8F5]">
-      <div className="flex flex-col md:flex-row min-h-[520px] md:min-h-[620px] lg:min-h-[700px]">
+      <div className="flex flex-col md:flex-row min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
         <div className="flex-1 flex flex-col justify-center px-6 xs:px-8 sm:px-12 lg:px-20 py-14 md:py-0 order-2 md:order-1">
           <span className="inline-flex items-center gap-1.5 text-brand-700 bg-brand-100 text-xs font-bold px-3 py-1.5 rounded-full mb-5 w-fit">
             Nouvelle collection été 2026

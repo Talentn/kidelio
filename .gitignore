@@ -10,6 +10,7 @@ api/vendor/bundle
 api/.env
 api/.env.production
 deploy/.env.production
+deploy/backups/
 frontend/.env.local
 
 # Rails master key & credentials

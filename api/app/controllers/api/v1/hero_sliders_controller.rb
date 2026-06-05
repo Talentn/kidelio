@@ -9,7 +9,7 @@ module Api
               title: s.title,
               subtitle: s.subtitle,
               link_url: s.link_url,
-              image_url: json_image_url(s.image)
+              image_url: json_variant_url(s.image, size: :large)
             }
           end
         end

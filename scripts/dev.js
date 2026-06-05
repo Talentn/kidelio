@@ -9,6 +9,7 @@ const { concurrently } = require("concurrently");
 
 const PID_FILE = path.join(__dirname, "..", "api", "tmp", "pids", "server.pid");
 const API_HEALTH = "http://127.0.0.1:3001/health";
+const GO_HEALTH = "http://127.0.0.1:3010/health";
 
 function checkHealth(url) {
   return new Promise((resolve) => {
@@ -26,31 +27,46 @@ function cleanStalePid() {
 
 async function main() {
   cleanStalePid();
-  const apiUp = await checkHealth(API_HEALTH);
+  const [apiUp, goUp] = await Promise.all([checkHealth(API_HEALTH), checkHealth(GO_HEALTH)]);
 
   const cmds = [];
-  const names = [];
-  const colors = [];
 
   if (!apiUp) {
-    cmds.push("cd api && bundle exec rails server -p 3001 -b 127.0.0.1");
-    names.push("api");
-    colors.push("blue");
+    cmds.push({
+      command: "cd api && bundle exec rails server -p 3001 -b 127.0.0.1",
+      name: "api",
+      prefixColor: "blue",
+    });
   }
 
-  const wait = "npx wait-on -t 120000 http://127.0.0.1:3001/health";
-  cmds.push(`${wait} && cd frontend && npm start`);
-  names.push("react");
-  colors.push("magenta");
+  if (!goUp) {
+    cmds.push({
+      command: "cd go-service && go run .",
+      name: "go",
+      prefixColor: "green",
+      env: {
+        PORT: "3010",
+        RAILS_URL: "http://127.0.0.1:3001",
+        DB_PATH: "./data/go-service.db",
+      },
+    });
+  }
+
+  const wait = "npx wait-on -t 120000 http://127.0.0.1:3001/health http://127.0.0.1:3010/health";
+  cmds.push({
+    command: `${wait} && cd frontend && npm start`,
+    name: "react",
+    prefixColor: "magenta",
+  });
 
   console.log("\n  Kids Shop");
   console.log("  React (UI):     http://localhost:3000");
   console.log("  Rails (API):    http://localhost:3001");
+  console.log("  Go (chat/cart): http://localhost:3010");
   console.log("  Connexion:      http://localhost:3000/connexion");
-  console.log("  Admin (staff):  http://localhost:3000/admin");
-  console.log("  Staff: admin@kids-shop.local / password123\n");
+  console.log("  Admin (staff):  http://localhost:3000/admin\n");
 
-  await concurrently(cmds, { names, prefixColors: colors, killOthersOn: ["failure"] }).result;
+  await concurrently(cmds, { killOthersOn: ["failure"] }).result;
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

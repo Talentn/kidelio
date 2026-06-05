@@ -10,6 +10,12 @@ export default defineConfig({
       '/rails':  { target: 'http://localhost:3001', changeOrigin: true },
       '/users':  { target: 'http://localhost:3001', changeOrigin: true },
       '/health': { target: 'http://localhost:3001', changeOrigin: true },
+      '/go': {
+        target: 'http://localhost:3010',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/go/, ''),
+      },
     },
   },
   build: {
@@ -21,13 +27,19 @@ export default defineConfig({
     chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React core — changes rarely, cached forever
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Helmet — tiny, separate for clean splitting
-          'vendor-helmet': ['react-helmet-async'],
-          // Icons — large, rarely changes
-          'vendor-icons': ['lucide-react'],
+        manualChunks(id) {
+          // Vendor — cached indefinitely (content-hashed)
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) {
+            return 'vendor-react'
+          }
+          if (id.includes('node_modules/react-helmet-async') || id.includes('node_modules/helmet')) {
+            return 'vendor-helmet'
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons'
+          }
+          // Pixel init stays in the main chunk (imported by eager components).
+          // Pixel events go into page-component chunks (imported only by lazy pages).
         },
       },
     },

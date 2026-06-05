@@ -1,6 +1,8 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { apiV1, peekCacheV1 } from "../lib/api";
 import { broadcast, onBroadcast } from "../lib/broadcast";
+import { goWsUrl } from "../lib/goApi";
+import { useCartToast } from "./CartToastContext";
 
 export type CartItem = {
   productId: number;
@@ -96,6 +98,7 @@ function initialItems(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const showToast = useCartToast()
   const [items, setItemsState] = useState<CartItem[]>(initialItems);
   const [loading, setLoading] = useState(() => initialItems().length === 0 && !peekCacheV1("/cart"));
 
@@ -127,22 +130,53 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [refresh]);
 
+  // ── Go cart event tracker ─────────────────────────────────────────────────
+  const cartWsRef = useRef<WebSocket | null>(null)
+  const trackCart = useCallback((action: string, item?: CartItem | null, qty?: number) => {
+    try {
+      if (!cartWsRef.current || cartWsRef.current.readyState !== WebSocket.OPEN) {
+        const ws = new WebSocket(goWsUrl("/cart/ws"))
+        ws.onclose = () => { cartWsRef.current = null }
+        cartWsRef.current = ws
+      }
+      const payload = JSON.stringify({
+        action,
+        product_id:   item?.productId,
+        product_name: item?.name,
+        quantity:     qty ?? item?.quantity ?? 1,
+        price:        item?.price,
+      })
+      const ws = cartWsRef.current!
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload)
+      } else {
+        ws.addEventListener("open", () => ws.send(payload), { once: true })
+      }
+    } catch { /* non-critical */ }
+  }, [])
+
   const addItem = async (productId: number, qty = 1, variant?: CartVariant) => {
     const data = await apiV1<CartResponse>("/cart/items", {
       method: "POST",
       body: JSON.stringify({ product_id: productId, quantity: qty, ...variantPayload(variant) }),
     });
-    setItems(mapItems(data.items));
+    const newItems = mapItems(data.items)
+    setItems(newItems)
     broadcast({ type: "cart", action: "changed" });
+    const added = newItems.find(i => i.productId === productId)
+    trackCart("add", added, qty)
+    if (added) showToast(added.name, added.imageUrl)
   };
 
   const removeItem = async (productId: number, variant?: CartVariant) => {
+    const removed = items.find(i => i.productId === productId)
     const data = await apiV1<CartResponse>(`/cart/items/${productId}`, {
       method: "DELETE",
       body: JSON.stringify(variantPayload(variant)),
     });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
+    trackCart("remove", removed)
   };
 
   const updateQty = async (productId: number, quantity: number, variant?: CartVariant) => {
@@ -152,12 +186,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
+    const updated = items.find(i => i.productId === productId)
+    trackCart("update", updated, quantity)
   };
 
   const clear = async () => {
     const data = await apiV1<CartResponse>("/cart", { method: "DELETE" });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
+    trackCart("clear")
   };
 
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);

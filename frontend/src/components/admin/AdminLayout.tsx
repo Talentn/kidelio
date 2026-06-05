@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { apiAdmin } from '../../lib/api'
@@ -57,6 +57,8 @@ export function AdminLayout() {
     { to: '/admin/utilisateurs', label: 'Utilisateurs',   icon: Users },
     { to: '/admin/attributs',  label: 'Attributs',        icon: Ruler },
     { to: '/admin/activite',   label: 'Activité',         icon: Activity },
+    { to: '/admin/chat',       label: 'Chat Support',     icon: MessageCircle },
+    { to: '/admin/panier-live', label: 'Activité live', icon: Circle },
   ]
 
   const SidebarContent = () => (

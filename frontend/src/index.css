@@ -85,6 +85,13 @@
     @apply w-full h-full object-cover group-hover:scale-105 transition-transform duration-500;
   }
 
+  /* ── Chat widget slide-up animation ── */
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  }
+  .animate-slide-up { animation: slide-up 0.2s ease-out forwards; }
+
   /* ── Section ── */
   .section {
     @apply py-8 md:py-14 lg:py-16;

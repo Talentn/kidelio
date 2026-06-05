@@ -7,10 +7,14 @@ import { StoreProvider } from "./context/StoreContext";
 import { UIProvider } from "./context/UIContext";
 import { CookieConsent } from "./components/CookieConsent";
 import { MetaPixel } from "./components/MetaPixel";
-import { PromoPopup } from "./components/PromoPopup";
 import { Layout } from "./components/Layout";
-import { AdminLayout } from "./components/admin/AdminLayout";
-import { RequireStaff } from "./components/admin/RequireStaff";
+import { ChatWidget } from "./components/ChatWidget";
+import { CartToastProvider } from "./context/CartToastContext";
+
+// Deferred — not needed on first paint
+const PromoPopup    = lazy(() => import("./components/PromoPopup").then(m => ({ default: m.PromoPopup })));
+const AdminLayout   = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
+const RequireStaff  = lazy(() => import("./components/admin/RequireStaff").then(m => ({ default: m.RequireStaff })));
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home          = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
@@ -38,6 +42,8 @@ const AdminAttributes = lazy(() => import("./pages/admin/AdminAttributes").then(
 const AdminPromos     = lazy(() => import("./pages/admin/AdminPromos").then(m => ({ default: m.AdminPromos })));
 const AdminPromoCodes = lazy(() => import("./pages/admin/AdminPromoCodes").then(m => ({ default: m.AdminPromoCodes })));
 const AdminUsers      = lazy(() => import("./pages/admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
+const AdminLiveCart   = lazy(() => import("./pages/admin/AdminLiveCart").then(m => ({ default: m.AdminLiveCart })));
+const AdminChat       = lazy(() => import("./pages/admin/AdminChat").then(m => ({ default: m.AdminChat })));
 
 // Minimal spinner shown while a lazy chunk loads
 function PageLoader() {
@@ -53,12 +59,14 @@ function App() {
     <HelmetProvider>
     <StoreProvider>
       <AuthProvider>
+        <CartToastProvider>
         <CartProvider>
           <UIProvider>
             <BrowserRouter>
               <MetaPixel />
               <CookieConsent />
               <PromoPopup />
+              <ChatWidget />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* ── Boutique (public) ── */}
@@ -93,6 +101,8 @@ function App() {
                       <Route path="codes-promo" element={<AdminPromoCodes />} />
                       <Route path="utilisateurs" element={<AdminUsers />} />
                       <Route path="activite" element={<ActivityLogs />} />
+                      <Route path="panier-live" element={<AdminLiveCart />} />
+                      <Route path="chat" element={<AdminChat />} />
                     </Route>
                   </Route>
 
@@ -102,6 +112,7 @@ function App() {
             </BrowserRouter>
           </UIProvider>
         </CartProvider>
+        </CartToastProvider>
       </AuthProvider>
     </StoreProvider>
     </HelmetProvider>

@@ -21,14 +21,14 @@ module Api
           name: category.name,
           slug: category.slug,
           description: category.description,
-          image_url: json_image_url(category.image),
+          image_url: json_variant_url(category.image, size: :medium),
           children: category.children.active.map do |child|
             {
               id: child.id,
               name: child.name,
               slug: child.slug,
               description: child.description,
-              image_url: json_image_url(child.image),
+              image_url: json_variant_url(child.image, size: :medium),
               parent_id: child.parent_id
             }
           end

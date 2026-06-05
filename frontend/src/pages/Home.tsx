@@ -98,11 +98,14 @@ export function Home() {
   return (
     <div className="bg-white">
       <SEO url="/" jsonLd={jsonLd} />
-      {slidesWithImage.length > 0 ? (
-        <HeroCarousel slides={slidesWithImage} />
-      ) : (
-        <FallbackHero heroImage={img('hero_fallback')} />
-      )}
+      {/* Fixed-height hero wrapper — prevents AgeShopRail CLS when hero switches */}
+      <div className="min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
+        {slidesWithImage.length > 0 ? (
+          <HeroCarousel slides={slidesWithImage} />
+        ) : (
+          <FallbackHero heroImage={img('hero_fallback')} />
+        )}
+      </div>
 
       <AgeShopRail />
 

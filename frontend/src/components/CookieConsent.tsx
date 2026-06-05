@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
-import { activatePixel, injectNoscript, isMetaPixelConfigured, trackPageView } from '../lib/metaPixel'
+import { activatePixel, injectNoscript, isMetaPixelConfigured, trackPageView } from '../lib/metaPixelInit'
 
 export function CookieConsent() {
   const location = useLocation()

@@ -14,7 +14,7 @@ import {
   isMetaPixelConfigured,
   isPixelReady,
   trackPageView,
-} from '../lib/metaPixel'
+} from '../lib/metaPixelInit'
 import { captureUtms } from '../lib/utm'
 
 export function MetaPixel() {

@@ -4,10 +4,10 @@ services:
       context: ../api
       dockerfile: Dockerfile
     ports:
-      - "7675:80"         # host:container
+      - "127.0.0.1:7675:80"
     env_file: .env.production
     volumes:
-      - ../api/storage:/rails/storage   # SQLite DBs + Active Storage uploads
+      - ../api/storage:/rails/storage
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/health"]
@@ -15,3 +15,32 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  go-service:
+    build:
+      context: ../go-service
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3010:3010"
+    environment:
+      - PORT=3010
+      - GO_ENV=production
+      - RAILS_URL=http://web:80
+      - DB_PATH=/app/data/go-service.db
+      - ALLOWED_ORIGINS=https://kideliowear.com
+      - SITE_URL=https://kideliowear.com
+    volumes:
+      - go_service_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  go_service_data:

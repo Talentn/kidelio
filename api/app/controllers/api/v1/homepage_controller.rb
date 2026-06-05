@@ -17,7 +17,7 @@ module Api
       def homepage_assets_json
         HomePageAsset::KEYS.index_with do |key|
           asset = HomePageAsset.find_by(key: key)
-          asset&.image&.attached? ? json_image_url(asset.image) : nil
+          asset&.image&.attached? ? json_variant_url(asset.image, size: :large) : nil
         end
       end
 
@@ -28,7 +28,7 @@ module Api
             title: s.title,
             subtitle: s.subtitle,
             link_url: s.link_url,
-            image_url: json_image_url(s.image)
+            image_url: json_variant_url(s.image, size: :large)
           }
         end
       end

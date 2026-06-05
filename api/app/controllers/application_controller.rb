@@ -69,18 +69,51 @@ class ApplicationController < ActionController::Base
     Current.user = nil
   end
 
+  # Returns a raw blob URL (used for admin uploads, non-image files).
   def json_image_url(attachment)
     return nil if attachment.nil?
 
-    # Attachment can be either an ActiveStorage::Attached::* proxy (has_one / has_many)
-    # or an individual ActiveStorage::Attachment record (when iterating has_many_attached).
     if attachment.respond_to?(:attached?)
-      # Proxy object — check whether anything is attached before calling rails_blob_path.
       return nil unless attachment.attached?
     end
 
-    # Relative path so the Vite dev proxy (:3001) and the admin proxy (:3002)
-    # can both load images directly from Rails (:3000).
+    rails_blob_path(attachment, only_path: true)
+  end
+
+  # Returns a resized WebP variant URL for storefront images.
+  # Falls back to the raw blob path if the attachment is not an image.
+  #
+  # size: :thumb  → 300×400  (product cards, color thumbnails)
+  # size: :medium → 600×800  (product listing, category grid)
+  # size: :large  → 900×1200 (product detail gallery)
+  VARIANT_SIZES = {
+    thumb:  [ 300, 400 ],
+    medium: [ 600, 800 ],
+    large:  [ 900, 1200 ],
+  }.freeze
+
+  def json_variant_url(attachment, size: :medium)
+    return nil if attachment.nil?
+
+    if attachment.respond_to?(:attached?)
+      return nil unless attachment.attached?
+    end
+
+    # Only process image content types
+    content_type = attachment.respond_to?(:content_type) ? attachment.content_type : ""
+    unless content_type.to_s.start_with?("image/")
+      return rails_blob_path(attachment, only_path: true)
+    end
+
+    dims = VARIANT_SIZES.fetch(size, VARIANT_SIZES[:medium])
+    variant = attachment.variant(
+      resize_to_limit: dims,
+      format: :webp,
+      saver: { quality: 82 }
+    )
+    rails_representation_path(variant, only_path: true)
+  rescue StandardError
+    # If variant processing fails (unsupported format, etc.), serve the original
     rails_blob_path(attachment, only_path: true)
   end
 end
