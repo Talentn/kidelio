@@ -4,7 +4,7 @@ services:
       context: ../api
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:7675:3000"
+      - "7675:3000"   # must be reachable from daizo-nginx via 172.17.0.1:7675 (not 127.0.0.1)
     environment:
       - PORT=3000
     env_file: .env.production
@@ -23,7 +23,7 @@ services:
       context: ../go-service
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:3010:3010"
+      - "3010:3010"   # must be reachable from daizo-nginx via 172.17.0.1:3010
     environment:
       - PORT=3010
       - GO_ENV=production
