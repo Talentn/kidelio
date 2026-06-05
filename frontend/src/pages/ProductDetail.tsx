@@ -8,6 +8,7 @@ import { api, peekCacheV1 } from '../api/client'
 import { useCart } from '../context/CartContext'
 import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
+import { SEO } from '../components/SEO'
 
 type ColorSize = { size: string; stock: number }
 
@@ -206,8 +207,41 @@ export function ProductDetail() {
   const mainImage = gallery[activeImage] ?? gallery[0]
   const selectedSize = availableSizes.find((s) => s.size === size)
 
+  const productImage = gallery[0] ?? product.image_urls[0]
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    image: productImage ? (productImage.startsWith('http') ? productImage : `https://kideliowear.com${productImage}`) : 'https://kideliowear.com/kidelio-logo.png',
+    sku: String(product.id),
+    url: `https://kideliowear.com/produits/${product.slug}`,
+    brand: { '@type': 'Brand', name: 'Kidelio' },
+    ...(product.category && {
+      category: product.category.name,
+    }),
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'TND',
+      price: Number(product.effective_price).toFixed(3),
+      availability: product.in_stock
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      url: `https://kideliowear.com/produits/${product.slug}`,
+      seller: { '@type': 'Organization', name: 'Kidelio' },
+    },
+  }
+
   return (
     <div className="page-wrap py-6 md:py-10">
+      <SEO
+        title={product.name}
+        description={product.description || `Achetez ${product.name} sur Kidelio. Livraison rapide en Tunisie, paiement à la livraison.`}
+        image={productImage || undefined}
+        url={`/produits/${product.slug}`}
+        type="product"
+        jsonLd={productJsonLd}
+      />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-6">
         <Link to="/" className="hover:text-brand-600 transition-colors">Accueil</Link>

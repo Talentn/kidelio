@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Banknote, RefreshCw, ShieldCheck, Truck } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
+import { SEO } from '../components/SEO'
 import { HeroCarousel, type HeroSlide } from '../components/home/HeroCarousel'
 import { FallbackHero } from '../components/home/FallbackHero'
 import { AgeShopRail } from '../components/home/AgeShopRail'
@@ -66,8 +67,37 @@ export function Home() {
 
   const slidesWithImage = sliders.filter((s) => s.image_url || s.title)
 
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Kidelio',
+      url: 'https://kideliowear.com',
+      description: 'La boutique en ligne dédiée aux bébés et enfants en Tunisie.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://kideliowear.com/produits?q={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Kidelio',
+      url: 'https://kideliowear.com',
+      logo: 'https://kideliowear.com/kidelio-logo.png',
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        availableLanguage: 'French',
+        areaServed: 'TN',
+      },
+    },
+  ]
+
   return (
     <div className="bg-white">
+      <SEO url="/" jsonLd={jsonLd} />
       {slidesWithImage.length > 0 ? (
         <HeroCarousel slides={slidesWithImage} />
       ) : (

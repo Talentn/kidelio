@@ -156,7 +156,7 @@ export function Layout() {
             <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Contact</h3>
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2"><Phone size={14} className="text-brand-400" /><span>+216 XX XXX XXX</span></li>
-              <li className="flex items-center gap-2"><Mail size={14} className="text-brand-400" /><span>contact@kidelio.tn</span></li>
+              <li className="flex items-center gap-2"><Mail size={14} className="text-brand-400" /><span>contact@kideliowear.com</span></li>
             </ul>
             <Link
               to="/contact"

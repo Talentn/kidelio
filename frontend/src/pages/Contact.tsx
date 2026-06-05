@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { User, Mail, Phone, MessageSquare, Send, CheckCircle, AlertCircle } from 'lucide-react'
 import { api } from '../api/client'
 import { trackContact } from '../lib/metaPixel'
+import { SEO } from '../components/SEO'
 
 export function Contact() {
   const [sent, setSent] = useState(false)
@@ -34,6 +35,11 @@ export function Contact() {
 
   return (
     <div>
+      <SEO
+        title="Contactez-nous"
+        description="Contactez l'équipe Kidelio pour toute question sur vos commandes, produits ou livraisons. Disponibles 7j/7 par téléphone, email ou WhatsApp."
+        url="/contact"
+      />
       {/* Hero */}
       <div className="bg-gradient-to-r from-brand-50 to-sage-50 border-b border-brand-100">
         <div className="page-wrap py-10 md:py-14">

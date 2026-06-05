@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, Shirt, Banknote, ChevronLeft } from 'lucide-react'
 import { useCart, type CartVariant } from '../context/CartContext'
+import { SEO } from '../components/SEO'
 
 export function Cart() {
   const { items, loading, updateQty, removeItem, total } = useCart()
@@ -49,6 +50,7 @@ export function Cart() {
 
   return (
     <div className="page-wrap py-6 md:py-10">
+      <SEO title="Mon panier" url="/panier" noIndex />
       <h1 className="font-display text-2xl md:text-3xl font-semibold text-ink mb-8">
         Mon panier
         <span className="ml-2 text-base font-semibold text-gray-400">

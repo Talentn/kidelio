@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, Lock, Loader2, AlertCircle, Rabbit } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useStore } from '../context/StoreContext'
+import { SEO } from '../components/SEO'
 
 function afterLoginPath(role: string) {
   return role === 'admin' || role === 'employee' ? '/admin' : '/compte'
@@ -47,6 +48,7 @@ export function Login() {
 
   return (
     <div className="min-h-[calc(100dvh-8rem)] flex items-center justify-center py-12 px-4">
+      <SEO title="Connexion" url="/connexion" noIndex />
       <div className="w-full max-w-md animate-scale-in">
         {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 p-8 md:p-10">

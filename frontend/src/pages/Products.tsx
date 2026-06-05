@@ -18,6 +18,7 @@ type Product = {
 
 import { findShopCategory, shopCategoryRootId, type ShopCategory } from '../lib/categories'
 import { trackSearch, trackViewCategory } from '../lib/metaPixel'
+import { SEO } from '../components/SEO'
 
 function ProductCard({ p }: { p: Product }) {
   const discount = p.on_promo && p.promo_price && p.price
@@ -165,8 +166,19 @@ export function Products() {
     return 'Boutique'
   }, [onPromo, featuredOnly, age, activeCategory])
 
+  const seoDescription = onPromo
+    ? 'Découvrez toutes les promotions Kidelio : vêtements et jouets pour enfants à prix réduits en Tunisie.'
+    : activeCategory
+    ? `${activeCategory.name} pour enfants sur Kidelio. Livraison rapide en Tunisie, paiement à la livraison.`
+    : 'Toute la boutique Kidelio : vêtements, jouets et essentiels pour bébés et enfants en Tunisie.'
+
   return (
     <div>
+      <SEO
+        title={pageTitle}
+        description={seoDescription}
+        url="/produits"
+      />
       {/* Page header */}
       <div className="bg-gradient-to-r from-brand-50 to-sage-50 border-b border-brand-100">
         <div className="page-wrap py-8 md:py-12">

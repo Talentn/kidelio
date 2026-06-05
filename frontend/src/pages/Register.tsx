@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, Loader2, AlertCircle, UserPlus, Package, Tag, Star, Bell } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { trackCompleteRegistration } from '../lib/metaPixel'
+import { SEO } from '../components/SEO'
 
 export function Register() {
   const { register } = useAuth()
@@ -32,6 +33,7 @@ export function Register() {
 
   return (
     <div className="min-h-[calc(100dvh-8rem)] flex items-center justify-center py-12 px-4">
+      <SEO title="Créer un compte" url="/inscription" noIndex />
       <div className="w-full max-w-md animate-scale-in">
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-100 p-8 md:p-10">
           {/* Header */}

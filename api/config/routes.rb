@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
   get "health", to: "health#show"
+  get "sitemap.xml", to: "sitemap#index", defaults: { format: :xml }
 
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
@@ -66,7 +67,7 @@ Rails.application.routes.draw do
 
   spa = ->(req) {
     path = req.path
-    %w[/api /rails /health /up /ws /sockjs /users].none? { |p| path.start_with?(p) }
+    %w[/api /rails /health /up /ws /sockjs /users /sitemap.xml].none? { |p| path.start_with?(p) }
   }
   root "spa#index", constraints: spa
   get "*path", to: "spa#index", constraints: spa

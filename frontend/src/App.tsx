@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { StoreProvider } from "./context/StoreContext";
@@ -35,6 +36,7 @@ import { TrackOrder } from "./pages/TrackOrder";
 
 function App() {
   return (
+    <HelmetProvider>
     <StoreProvider>
       <AuthProvider>
         <CartProvider>
@@ -86,6 +88,7 @@ function App() {
         </CartProvider>
       </AuthProvider>
     </StoreProvider>
+    </HelmetProvider>
   );
 }
 
