@@ -57,6 +57,7 @@ func ValidateSession(r *http.Request) (*RailsUser, error) {
 	req.Header.Set("Cookie", r.Header.Get("Cookie"))
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Forwarded-For", r.RemoteAddr)
+	req.Header.Set("X-Forwarded-Proto", "https")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
