@@ -3,6 +3,12 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
+  # Docker env_file may set SECRET_KEY_BASE= (empty) which overrides credentials and
+  # crashes boot. Only use ENV when a real value is provided.
+  if ENV["SECRET_KEY_BASE"].present?
+    config.secret_key_base = ENV["SECRET_KEY_BASE"]
+  end
+
   # Code is not reloaded between requests.
   config.enable_reloading = false
 

@@ -2,7 +2,16 @@
 
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
+  mkdir -p storage/active_storage storage/variants
+  echo "==> Preparing database..."
+  if ! ./bin/rails db:prepare; then
+    echo ""
+    echo "ERROR: db:prepare failed."
+    echo "  - Ensure RAILS_MASTER_KEY and SECRET_KEY_BASE are set in deploy/.env.production"
+    echo "  - Ensure storage is writable by uid 1000:"
+    echo "      sudo chown -R 1000:1000 api/storage"
+    exit 1
+  fi
 fi
 
 exec "${@}"

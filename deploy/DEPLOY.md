@@ -86,6 +86,39 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## Troubleshooting
 
+### `deploy-web-1 is unhealthy`
+
+Most common cause: **storage permissions**. The Rails container runs as uid `1000`.
+
+```bash
+sudo chown -R 1000:1000 api/storage
+docker compose -f deploy/docker-compose.prod.yml up -d --build
+```
+
+Check Rails logs:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml logs --tail=100 web
+```
+
+Other causes:
+
+| Cause | Fix |
+|-------|-----|
+| Missing `RAILS_MASTER_KEY` | Copy `api/config/master.key` value into `deploy/.env.production` |
+| `secret_key_base must be a String` | Remove empty `SECRET_KEY_BASE=` from `.env.production`, or set a real value (`openssl rand -hex 64`) |
+| `permission denied` on docker | `sudo usermod -aG docker $USER` then log out/in, or prefix commands with `sudo` |
+| `db:prepare failed` | Fix storage permissions (above), then redeploy |
+| First boot slow | Health check allows 2 min (`start_period: 120s`) — wait and retry |
+
+Verify manually:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0.1:80/up
+```
+
+### Other issues
+
 | Symptom | Check |
 |---------|-------|
 | Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/go` |

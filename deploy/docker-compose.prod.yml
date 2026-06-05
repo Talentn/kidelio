@@ -10,11 +10,11 @@ services:
       - ../api/storage:/rails/storage
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/up"]
+      interval: 15s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 10
+      start_period: 120s
 
   go-service:
     build:
@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
     depends_on:
       web:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3010/health"]
       interval: 30s

@@ -8,8 +8,9 @@
 # Prerequisites (one-time setup):
 #   1. Docker installed  : curl -fsSL https://get.docker.com | sh
 #   2. Node 20 installed : nvm install 20 && nvm use 20
-#   3. .env.production   : cp deploy/.env.production.example deploy/.env.production
-#                          (then fill in RAILS_MASTER_KEY, SECRET_KEY_BASE, etc.)
+#   3. .env.production   : ONCE ONLY: cp deploy/.env.production.example deploy/.env.production
+#                          then fill in RAILS_MASTER_KEY (from api/config/master.key).
+#                          Never re-copy the example — it wipes your secrets.
 #   4. SSL cert obtained : certbot --nginx -d kideliowear.com -d www.kideliowear.com
 #   5. Nginx configured  : see deploy/nginx-kideliowear.conf and deploy/DEPLOY.md
 # ─────────────────────────────────────────────────────────────────────────────
@@ -26,13 +27,29 @@ echo "==> Pulling latest code..."
 cd "$REPO_DIR"
 git pull
 
-# ── 2. Check env file exists ─────────────────────────────────────────────────
+# ── 2. Check env file exists and required secrets are set ────────────────────
 if [ ! -f "$DEPLOY_DIR/.env.production" ]; then
   echo ""
   echo "ERROR: deploy/.env.production not found."
   echo "       Copy the example and fill in your values:"
   echo "       cp deploy/.env.production.example deploy/.env.production"
   exit 1
+fi
+
+has_master_key=false
+has_secret_base=false
+grep -qE '^RAILS_MASTER_KEY=.+$' "$DEPLOY_DIR/.env.production" && has_master_key=true
+grep -qE '^SECRET_KEY_BASE=.+$' "$DEPLOY_DIR/.env.production" && has_secret_base=true
+if ! $has_master_key && ! $has_secret_base; then
+  echo "ERROR: deploy/.env.production needs at least one of:"
+  echo "  RAILS_MASTER_KEY → contents of api/config/master.key"
+  echo "  SECRET_KEY_BASE  → openssl rand -hex 64"
+  exit 1
+fi
+# Empty SECRET_KEY_BASE= overrides credentials and breaks Rails — strip it.
+if grep -qE '^SECRET_KEY_BASE=$' "$DEPLOY_DIR/.env.production"; then
+  echo "==> Removing empty SECRET_KEY_BASE= (use credentials via RAILS_MASTER_KEY instead)"
+  sed -i '/^SECRET_KEY_BASE=$/d' "$DEPLOY_DIR/.env.production"
 fi
 
 # ── 3. Install frontend deps ─────────────────────────────────────────────────
@@ -47,27 +64,47 @@ source <(grep -E '^VITE_' "$DEPLOY_DIR/.env.production" 2>/dev/null | sed 's/\r$
 set +a
 npm run build
 
-# ── 5. Ensure storage directory exists ───────────────────────────────────────
+# ── 5. Ensure storage directory exists and is writable by container (uid 1000) ─
 echo "==> Ensuring storage directory..."
-mkdir -p "$REPO_DIR/api/storage"
+mkdir -p "$REPO_DIR/api/storage/active_storage" "$REPO_DIR/api/storage/variants"
+STORAGE_UID="$(stat -c '%u' "$REPO_DIR/api/storage" 2>/dev/null || echo 0)"
+if [ "$STORAGE_UID" != "1000" ]; then
+  echo "==> Fixing storage ownership (container runs as uid 1000)..."
+  if sudo chown -R 1000:1000 "$REPO_DIR/api/storage"; then
+    echo "    Done."
+  else
+    echo "ERROR: api/storage must be owned by uid 1000. Run:"
+    echo "  sudo chown -R 1000:1000 $REPO_DIR/api/storage"
+    exit 1
+  fi
+fi
 
 # ── 6. Build Docker images and restart containers ─────────────────────────────
 echo "==> Building Docker images and restarting containers..."
 $COMPOSE up -d --build
 
 # ── 7. Wait for services to be healthy ────────────────────────────────────────
-echo "==> Waiting for services to become healthy..."
-for i in $(seq 1 30); do
+echo "==> Waiting for services to become healthy (up to 3 min)..."
+for i in $(seq 1 36); do
   WEB_OK=$($COMPOSE ps --format json web 2>/dev/null | grep -c '"Health":"healthy"' || true)
   GO_OK=$($COMPOSE ps --format json go-service 2>/dev/null | grep -c '"Health":"healthy"' || true)
   if [ "$WEB_OK" -ge 1 ] && [ "$GO_OK" -ge 1 ]; then
     echo "    Rails + Go are healthy."
     break
   fi
-  if [ "$i" -eq 30 ]; then
-    echo "WARNING: Health checks did not pass within 30 attempts. Check: $COMPOSE ps"
+  if [ "$i" -eq 36 ]; then
+    echo ""
+    echo "ERROR: Services did not become healthy."
+    $COMPOSE ps
+    echo ""
+    echo "── Rails logs (last 80 lines) ──"
+    $COMPOSE logs --tail=80 web || true
+    echo ""
+    echo "── Go logs (last 40 lines) ──"
+    $COMPOSE logs --tail=40 go-service || true
+    exit 1
   fi
-  sleep 2
+  sleep 5
 done
 
 # ── 8. Run database migrations ────────────────────────────────────────────────
