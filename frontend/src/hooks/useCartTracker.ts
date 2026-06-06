@@ -1,7 +1,7 @@
 // Sends cart add/remove events to the Go service over WebSocket.
 // The connection is lazy — only opens when the first event fires.
 import { useRef, useCallback } from 'react'
-import { goWsUrl } from '../lib/goApi'
+import { goWsUrl, goWsEnabled, goTrack } from '../lib/goApi'
 
 type CartAction = 'add' | 'remove' | 'update' | 'clear'
 
@@ -25,6 +25,10 @@ export function useCartTracker() {
   }, [])
 
   const track = useCallback((payload: CartEventPayload) => {
+    if (!goWsEnabled()) {
+      goTrack('/cart/events', payload)
+      return
+    }
     const ws = ensureWs()
     const send = () => ws.send(JSON.stringify(payload))
     if (ws.readyState === WebSocket.OPEN) {

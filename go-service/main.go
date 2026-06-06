@@ -41,7 +41,8 @@ func main() {
 	mux.HandleFunc("POST /chat/admin/rooms/{id}/close", handlers.AdminCloseRoom)
 
 	// ── Cart events ──────────────────────────────────────────────────────────
-	// Browser: send cart events
+	// Browser: send cart events (HTTP when WebSocket unavailable)
+	mux.HandleFunc("POST /cart/events", middleware.RateLimit(120, time.Minute, handlers.CartEventHTTP))
 	mux.HandleFunc("GET /cart/ws", handlers.CartEventWS)
 	// Admin: subscribe to live feed
 	mux.HandleFunc("GET /cart/admin/ws", handlers.CartAdminWS)
@@ -49,6 +50,7 @@ func main() {
 	mux.HandleFunc("GET /cart/admin/events", middleware.RequireStaff(handlers.GetCartEvents))
 
 	// ── Favorite events ──────────────────────────────────────────────────────
+	mux.HandleFunc("POST /favorites/events", middleware.RateLimit(120, time.Minute, handlers.FavoriteEventHTTP))
 	mux.HandleFunc("GET /favorites/ws", handlers.FavoriteEventWS)
 	mux.HandleFunc("GET /favorites/admin/ws", handlers.FavoritesAdminWS)
 	mux.HandleFunc("GET /favorites/admin/events", middleware.RequireStaff(handlers.GetFavoriteEvents))

@@ -14,6 +14,8 @@ Rails.application.routes.draw do
       post "chat/admin/rooms/:room_id/join", to: "go_proxy#chat_admin_join"
       post "chat/admin/rooms/:room_id/messages", to: "go_proxy#chat_admin_message"
       post "chat/admin/rooms/:room_id/close", to: "go_proxy#chat_admin_close"
+      post "cart/events", to: "go_proxy#cart_events"
+      post "favorites/events", to: "go_proxy#favorites_events"
       get "cart/admin/events", to: "go_proxy#cart_admin_events"
       get "favorites/admin/events", to: "go_proxy#favorites_admin_events"
 

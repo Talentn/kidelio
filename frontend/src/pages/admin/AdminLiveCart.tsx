@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ShoppingCart, Trash2, RefreshCw, ShoppingBag, Circle, Heart, HeartOff } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
-import { goWsUrl, goGet } from '../../lib/goApi'
+import { goWsUrl, goGet, goWsEnabled } from '../../lib/goApi'
 
 type CartEvent = {
   id: string
@@ -62,7 +62,27 @@ export function AdminLiveCart() {
   const [favConnected, setFavConnected] = useState(false)
   const favWsRef = useRef<WebSocket | null>(null)
 
+  const refreshCart = () =>
+    goGet<{ events: CartEvent[] }>('/cart/admin/events?limit=100')
+      .then(data => setCartEvents(data.events || []))
+      .catch(() => {})
+
+  const refreshFavorites = () =>
+    goGet<{ events: FavoriteEvent[] }>('/favorites/admin/events?limit=100')
+      .then(data => setFavEvents(data.events || []))
+      .catch(() => {})
+
+  // Cart feed — poll when WebSocket is off (shared nginx cannot upgrade WS)
   useEffect(() => {
+    refreshCart()
+    if (goWsEnabled()) return
+    setCartConnected(true)
+    const id = setInterval(refreshCart, 3000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (!goWsEnabled()) return
     const ws = new WebSocket(goWsUrl('/cart/admin/ws'))
     cartWsRef.current = ws
     ws.onopen  = () => setCartConnected(true)
@@ -78,7 +98,17 @@ export function AdminLiveCart() {
     return () => ws.close()
   }, [])
 
+  // Favorites feed — poll when WebSocket is off
   useEffect(() => {
+    refreshFavorites()
+    if (goWsEnabled()) return
+    setFavConnected(true)
+    const id = setInterval(refreshFavorites, 3000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (!goWsEnabled()) return
     const ws = new WebSocket(goWsUrl('/favorites/admin/ws'))
     favWsRef.current = ws
     ws.onopen  = () => setFavConnected(true)
@@ -95,13 +125,8 @@ export function AdminLiveCart() {
   }, [])
 
   const refresh = async () => {
-    if (tab === 'cart') {
-      const data = await goGet<{ events: CartEvent[] }>('/cart/admin/events?limit=100')
-      setCartEvents(data.events || [])
-    } else {
-      const data = await goGet<{ events: FavoriteEvent[] }>('/favorites/admin/events?limit=100')
-      setFavEvents(data.events || [])
-    }
+    if (tab === 'cart') await refreshCart()
+    else await refreshFavorites()
   }
 
   const connected = tab === 'cart' ? cartConnected : favConnected

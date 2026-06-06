@@ -11,6 +11,60 @@ import (
 	"github.com/kidelio/go-service/store"
 )
 
+type favoriteEventPayload struct {
+	Action      string `json:"action"`
+	ProductID   int64  `json:"product_id"`
+	ProductName string `json:"product_name"`
+}
+
+func recordFavoriteEvent(r *http.Request, payload favoriteEventPayload) *store.FavoriteEvent {
+	if payload.Action == "" {
+		return nil
+	}
+
+	user, _ := middleware.ValidateSession(r)
+	sessionID := r.Header.Get("X-Session-Id")
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
+
+	event := &store.FavoriteEvent{
+		ID:          uuid.NewString(),
+		SessionID:   sessionID,
+		Action:      payload.Action,
+		ProductName: payload.ProductName,
+	}
+	if payload.ProductID != 0 {
+		event.ProductID = &payload.ProductID
+	}
+	if user != nil {
+		event.UserID = &user.ID
+	}
+
+	_ = store.SaveFavoriteEvent(event)
+
+	broadcastPayload := map[string]any{
+		"type":  "favorite_event",
+		"event": event,
+	}
+	if user != nil {
+		broadcastPayload["user_name"] = user.Name
+	}
+	hub.Favorites.Broadcast(broadcastPayload)
+	return event
+}
+
+// POST /favorites/events — HTTP fallback when WebSocket unavailable
+func FavoriteEventHTTP(w http.ResponseWriter, r *http.Request) {
+	var payload favoriteEventPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || recordFavoriteEvent(r, payload) == nil {
+		http.Error(w, `{"error":"invalid event"}`, http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
 // ── WS /favorites/ws — browser sends add/remove events ────────────────────────
 
 func FavoriteEventWS(w http.ResponseWriter, r *http.Request) {
@@ -20,49 +74,16 @@ func FavoriteEventWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	user, _ := middleware.ValidateSession(r)
-	sessionID := r.Header.Get("X-Session-Id")
-	if sessionID == "" {
-		sessionID = uuid.NewString()
-	}
-
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		var payload struct {
-			Action      string `json:"action"`
-			ProductID   int64  `json:"product_id"`
-			ProductName string `json:"product_name"`
-		}
-		if err := json.Unmarshal(raw, &payload); err != nil || payload.Action == "" {
+		var payload favoriteEventPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
 			continue
 		}
-
-		event := &store.FavoriteEvent{
-			ID:          uuid.NewString(),
-			SessionID:   sessionID,
-			Action:      payload.Action,
-			ProductName: payload.ProductName,
-		}
-		if payload.ProductID != 0 {
-			event.ProductID = &payload.ProductID
-		}
-		if user != nil {
-			event.UserID = &user.ID
-		}
-
-		_ = store.SaveFavoriteEvent(event)
-
-		broadcastPayload := map[string]any{
-			"type":  "favorite_event",
-			"event": event,
-		}
-		if user != nil {
-			broadcastPayload["user_name"] = user.Name
-		}
-		hub.Favorites.Broadcast(broadcastPayload)
+		recordFavoriteEvent(r, payload)
 	}
 }
 

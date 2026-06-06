@@ -11,6 +11,64 @@ import (
 	"github.com/kidelio/go-service/store"
 )
 
+type cartEventPayload struct {
+	Action      string  `json:"action"`
+	ProductID   int64   `json:"product_id"`
+	ProductName string  `json:"product_name"`
+	Quantity    int     `json:"quantity"`
+	Price       float64 `json:"price"`
+}
+
+func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent {
+	if payload.Action == "" {
+		return nil
+	}
+
+	user, _ := middleware.ValidateSession(r)
+	sessionID := r.Header.Get("X-Session-Id")
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
+
+	event := &store.CartEvent{
+		ID:          uuid.NewString(),
+		SessionID:   sessionID,
+		Action:      payload.Action,
+		ProductName: payload.ProductName,
+		Quantity:    payload.Quantity,
+		Price:       payload.Price,
+	}
+	if payload.ProductID != 0 {
+		event.ProductID = &payload.ProductID
+	}
+	if user != nil {
+		event.UserID = &user.ID
+	}
+
+	_ = store.SaveCartEvent(event)
+
+	broadcastPayload := map[string]any{
+		"type":  "cart_event",
+		"event": event,
+	}
+	if user != nil {
+		broadcastPayload["user_name"] = user.Name
+	}
+	hub.Cart.Broadcast(broadcastPayload)
+	return event
+}
+
+// POST /cart/events — HTTP fallback when WebSocket unavailable
+func CartEventHTTP(w http.ResponseWriter, r *http.Request) {
+	var payload cartEventPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || recordCartEvent(r, payload) == nil {
+		http.Error(w, `{"error":"invalid event"}`, http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
 // ── WS /cart/ws — browser sends add/remove events ─────────────────────────────
 
 func CartEventWS(w http.ResponseWriter, r *http.Request) {
@@ -20,55 +78,16 @@ func CartEventWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Optionally identify the user (non-blocking if not logged in)
-	user, _ := middleware.ValidateSession(r)
-	sessionID := r.Header.Get("X-Session-Id")
-	if sessionID == "" {
-		sessionID = uuid.NewString()
-	}
-
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
-		var payload struct {
-			Action      string  `json:"action"`
-			ProductID   int64   `json:"product_id"`
-			ProductName string  `json:"product_name"`
-			Quantity    int     `json:"quantity"`
-			Price       float64 `json:"price"`
-		}
-		if err := json.Unmarshal(raw, &payload); err != nil || payload.Action == "" {
+		var payload cartEventPayload
+		if err := json.Unmarshal(raw, &payload); err != nil {
 			continue
 		}
-
-		event := &store.CartEvent{
-			ID:          uuid.NewString(),
-			SessionID:   sessionID,
-			Action:      payload.Action,
-			ProductName: payload.ProductName,
-			Quantity:    payload.Quantity,
-			Price:       payload.Price,
-		}
-		if payload.ProductID != 0 {
-			event.ProductID = &payload.ProductID
-		}
-		if user != nil {
-			event.UserID = &user.ID
-		}
-
-		_ = store.SaveCartEvent(event)
-
-		// Broadcast to all admin dashboard subscribers
-		broadcastPayload := map[string]any{
-			"type":  "cart_event",
-			"event": event,
-		}
-		if user != nil {
-			broadcastPayload["user_name"] = user.Name
-		}
-		hub.Cart.Broadcast(broadcastPayload)
+		recordCartEvent(r, payload)
 	}
 }
 

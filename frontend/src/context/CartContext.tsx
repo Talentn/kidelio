@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { apiV1, peekCacheV1 } from "../lib/api";
 import { broadcast, onBroadcast } from "../lib/broadcast";
-import { goWsUrl } from "../lib/goApi";
+import { goWsUrl, goWsEnabled, goTrack } from "../lib/goApi";
 import { useCartToast } from "./CartToastContext";
 
 export type CartItem = {
@@ -133,24 +133,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // ── Go cart event tracker ─────────────────────────────────────────────────
   const cartWsRef = useRef<WebSocket | null>(null)
   const trackCart = useCallback((action: string, item?: CartItem | null, qty?: number) => {
+    const payload = {
+      action,
+      product_id:   item?.productId,
+      product_name: item?.name,
+      quantity:     qty ?? item?.quantity ?? 1,
+      price:        item?.price,
+    }
     try {
+      if (!goWsEnabled()) {
+        goTrack("/cart/events", payload)
+        return
+      }
       if (!cartWsRef.current || cartWsRef.current.readyState !== WebSocket.OPEN) {
         const ws = new WebSocket(goWsUrl("/cart/ws"))
         ws.onclose = () => { cartWsRef.current = null }
         cartWsRef.current = ws
       }
-      const payload = JSON.stringify({
-        action,
-        product_id:   item?.productId,
-        product_name: item?.name,
-        quantity:     qty ?? item?.quantity ?? 1,
-        price:        item?.price,
-      })
+      const body = JSON.stringify(payload)
       const ws = cartWsRef.current!
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(payload)
+        ws.send(body)
       } else {
-        ws.addEventListener("open", () => ws.send(payload), { once: true })
+        ws.addEventListener("open", () => ws.send(body), { once: true })
       }
     } catch { /* non-critical */ }
   }, [])
