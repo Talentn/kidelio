@@ -77,7 +77,7 @@ export function Register() {
             {[
               { icon: Package, text: 'Suivi de commandes' },
               { icon: Tag, text: 'Offres exclusives' },
-              { icon: Star, text: 'Points fidélité' },
+              { icon: Star, text: 'Points de fidélité' },
               { icon: Bell, text: 'Alertes nouveautés' },
             ].map((b) => {
               const Icon = b.icon

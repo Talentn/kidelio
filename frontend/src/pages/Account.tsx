@@ -14,11 +14,12 @@ type Order = {
 }
 
 export function Account() {
-  const { user, logout } = useAuth()
+  const { user, logout, refresh } = useAuth()
   const [orders, setOrders] = useState<Order[]>(() =>
     peekCacheV1<{ orders: Order[] }>('/orders')?.orders ?? []
   )
   const [loading, setLoading] = useState(() => !peekCacheV1('/orders'))
+  const [fidelityPoints, setFidelityPoints] = useState<number | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -29,10 +30,15 @@ export function Account() {
       setLoading(false)
     }
 
+    void refresh()
+    api<{ rewards: { fidelity_points: number } }>('/rewards')
+      .then((d) => setFidelityPoints(d.rewards.fidelity_points))
+      .catch(() => setFidelityPoints(user.fidelity_points ?? 0))
+
     api<{ orders: Order[] }>('/orders')
       .then((d) => setOrders(d.orders))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [user, refresh])
 
   if (!user) {
     return (
@@ -64,11 +70,13 @@ export function Account() {
           <div className="bg-white/15 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-1">
               <Star size={16} className="text-amber-300" />
-              <span className="text-white/80 text-xs font-semibold">Points fidélité</span>
+              <span className="text-white/80 text-xs font-semibold">Points de fidélité</span>
             </div>
-            <p className="font-bold text-2xl">{user.fidelity_points?.toLocaleString('fr-FR') ?? 0}</p>
+            <p className="font-bold text-2xl">
+              {(fidelityPoints ?? user.fidelity_points ?? 0).toLocaleString('fr-FR')}
+            </p>
             <Link to="/recompenses" className="text-[11px] text-white/80 hover:text-white underline mt-1 inline-block">
-              Voir progression
+              Voir mes points de fidélité
             </Link>
           </div>
           <div className="bg-white/15 rounded-2xl p-4">
