@@ -3,7 +3,8 @@ module Api
     # Forwards REST calls to go-service. WebSocket upgrades use GoWebSocketProxyMiddleware.
     class GoProxyController < BaseController
       ADMIN_ACTIONS = %i[
-        chat_admin_queue chat_admin_join chat_admin_message chat_admin_close
+        chat_admin_queue chat_admin_archives chat_admin_room
+        chat_admin_join chat_admin_message chat_admin_close
         cart_admin_events favorites_admin_events
       ].freeze
 
@@ -23,6 +24,14 @@ module Api
 
       def chat_admin_queue
         relay("/chat/admin/queue")
+      end
+
+      def chat_admin_archives
+        relay("/chat/admin/archives")
+      end
+
+      def chat_admin_room
+        relay("/chat/admin/rooms/#{params[:room_id]}")
       end
 
       def chat_admin_join

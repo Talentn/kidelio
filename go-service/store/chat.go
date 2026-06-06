@@ -110,6 +110,72 @@ func CloseRoom(roomID string) error {
 	return err
 }
 
+type ArchivedRoom struct {
+	Room
+	MessageCount int `json:"message_count"`
+}
+
+func ListClosedRooms(limit, offset int, query string) ([]ArchivedRoom, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	sqlText := `
+		SELECT r.id, r.user_id, r.user_name, r.user_email, r.status, r.agent_id, r.agent_name,
+		       r.created_at, r.updated_at,
+		       (SELECT COUNT(*) FROM chat_messages m WHERE m.room_id = r.id) AS message_count
+		FROM chat_rooms r
+		WHERE r.status = 'closed'`
+	args := []any{}
+	if query != "" {
+		sqlText += ` AND (r.user_name LIKE ? OR r.user_email LIKE ? OR r.agent_name LIKE ?)`
+		pattern := "%" + query + "%"
+		args = append(args, pattern, pattern, pattern)
+	}
+	sqlText += ` ORDER BY r.updated_at DESC LIMIT ? OFFSET ?`
+	args = append(args, limit, offset)
+
+	rows, err := DB.Query(sqlText, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []ArchivedRoom
+	for rows.Next() {
+		ar := ArchivedRoom{}
+		var userEmail, agentName sql.NullString
+		err := rows.Scan(
+			&ar.ID, &ar.UserID, &ar.UserName, &userEmail,
+			&ar.Status, &ar.AgentID, &agentName,
+			&ar.CreatedAt, &ar.UpdatedAt, &ar.MessageCount,
+		)
+		if err != nil {
+			return nil, err
+		}
+		ar.UserEmail = userEmail.String
+		ar.AgentName = agentName.String
+		rooms = append(rooms, ar)
+	}
+	return rooms, nil
+}
+
+func CountClosedRooms(query string) (int, error) {
+	sqlText := `SELECT COUNT(*) FROM chat_rooms WHERE status = 'closed'`
+	args := []any{}
+	if query != "" {
+		sqlText += ` AND (user_name LIKE ? OR user_email LIKE ? OR agent_name LIKE ?)`
+		pattern := "%" + query + "%"
+		args = append(args, pattern, pattern, pattern)
+	}
+	var count int
+	err := DB.QueryRow(sqlText, args...).Scan(&count)
+	return count, err
+}
+
 func SaveMessage(m *Message) error {
 	_, err := DB.Exec(
 		`INSERT INTO chat_messages (id, room_id, sender_type, sender_name, content) VALUES (?,?,?,?,?)`,

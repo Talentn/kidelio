@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -407,6 +408,63 @@ func AgentWS(w http.ResponseWriter, r *http.Request) {
 			agent.RoomID = ""
 		}
 	}
+}
+
+// ── GET /chat/admin/archives ─────────────────────────────────────────────────
+
+func GetArchives(w http.ResponseWriter, r *http.Request) {
+	limit, offset := 50, 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 100 {
+			limit = n
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if n, err := strconv.Atoi(o); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	query := r.URL.Query().Get("q")
+
+	rooms, err := store.ListClosedRooms(limit, offset, query)
+	if err != nil {
+		log.Printf("GetArchives: %v", err)
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+	if rooms == nil {
+		rooms = []store.ArchivedRoom{}
+	}
+	total, _ := store.CountClosedRooms(query)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"rooms":  rooms,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+// ── GET /chat/admin/rooms/{id} — read-only archived conversation ─────────────
+
+func GetAdminRoom(w http.ResponseWriter, r *http.Request) {
+	roomID := r.PathValue("id")
+	room, err := store.GetRoom(roomID)
+	if err != nil || room == nil || room.Status != "closed" {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	msgs, err := store.GetMessages(roomID)
+	if err != nil {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	if msgs == nil {
+		msgs = []store.Message{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"room": room, "messages": msgs})
 }
 
 // ── GET /chat/admin/queue ──────────────────────────────────────────────────────

@@ -35,6 +35,8 @@ func main() {
 	mux.HandleFunc("GET /chat/admin/ws", handlers.AgentWS)
 	// Agent: queue snapshot (REST fallback)
 	mux.HandleFunc("GET /chat/admin/queue", middleware.RequireStaff(handlers.GetQueue))
+	mux.HandleFunc("GET /chat/admin/archives", middleware.RequireStaff(handlers.GetArchives))
+	mux.HandleFunc("GET /chat/admin/rooms/{id}", middleware.RequireStaff(handlers.GetAdminRoom))
 	// Agent: reliable HTTP actions (join / send / close)
 	mux.HandleFunc("POST /chat/admin/rooms/{id}/join", handlers.AdminJoinRoom)
 	mux.HandleFunc("POST /chat/admin/rooms/{id}/messages", handlers.AdminSendMessage)
