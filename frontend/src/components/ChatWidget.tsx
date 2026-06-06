@@ -19,6 +19,7 @@ export function ChatWidget() {
   const [name, setName]       = useState(user?.name || '')
   const [email, setEmail]     = useState(user?.email || '')
   const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
   const [msgs, setMsgs]       = useState<Msg[]>([])
   const [input, setInput]     = useState('')
   const [connected, setConnected] = useState(false)
@@ -84,6 +85,7 @@ export function ChatWidget() {
     e.preventDefault()
     if (!name.trim()) return
     setStarting(true)
+    setStartError('')
     try {
       const res = await goPost<{ room_id: string }>('/chat/rooms', { name, email })
       sessionStorage.setItem('chat_room_id', res.room_id)
@@ -91,7 +93,7 @@ export function ChatWidget() {
       setStep('chat')
       setPosition(null)
     } catch {
-      // ignore
+      setStartError('Impossible de démarrer le chat. Réessayez dans un instant.')
     } finally {
       setStarting(false)
     }
@@ -156,6 +158,11 @@ export function ChatWidget() {
                 placeholder="Email (optionnel)"
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400"
               />
+              {startError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {startError}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={starting}

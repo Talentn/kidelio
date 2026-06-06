@@ -148,7 +148,8 @@ docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0
 
 | Symptom | Check |
 |---------|-------|
+| Chat button does nothing | `POST /go/chat/rooms` must not return Rails 404 — Rails proxies `/go` to Go when nginx does not; redeploy after pulling |
 | Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/go` |
-| WebSocket fails | nginx `/go/` block has Upgrade headers; Go container healthy |
+| WebSocket fails | nginx `/go/` block has Upgrade headers; Go container healthy; or rely on Rails `/go` proxy |
 | Go unhealthy | `docker compose -f deploy/docker-compose.prod.yml logs go-service` |
 | Chat queue stale | Restart Go: `docker compose -f deploy/docker-compose.prod.yml restart go-service` |

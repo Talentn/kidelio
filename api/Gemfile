@@ -17,6 +17,7 @@ gem "omniauth-google-oauth2"
 gem "omniauth-rails_csrf_protection"
 
 gem "rack-cors"
+gem "rack-proxy"
 gem "rack-attack"
 gem "mini_magick"
 

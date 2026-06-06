@@ -7,6 +7,7 @@ services:
       - "7675:3000"   # must be reachable from daizo-nginx via 172.17.0.1:7675 (not 127.0.0.1)
     environment:
       - PORT=3000
+      - GO_SERVICE_URL=http://go-service:3010
     env_file: .env.production
     volumes:
       - ../api/storage:/rails/storage
