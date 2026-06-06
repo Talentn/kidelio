@@ -1,5 +1,5 @@
-# Proxies /api/v1/realtime/* to the Go service (chat, cart events, favorites).
-# Do not use /api/v1/live — shared daizo-nginx reserves "live" for another app (Next.js).
+# Rack proxy used by GoWebSocketProxyMiddleware for WebSocket upgrades to go-service.
+# REST calls use GoServiceClient via Api::V1::GoProxyController (/api/v1/chat/*, etc.).
 require "rack/proxy"
 
 class GoServiceProxy < Rack::Proxy

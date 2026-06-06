@@ -6,8 +6,15 @@ Rails.application.routes.draw do
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
     namespace :v1 do
-      # Go service (chat, cart/favorites) — /api/v1/live is reserved by shared daizo-nginx
-      mount GoServiceProxy.new => "/realtime"
+      # Go service REST — explicit routes (shared nginx steals /api/v1/realtime, /go, etc.)
+      post "chat/rooms", to: "go_proxy#create_chat_room"
+      get "chat/rooms/:room_id/messages", to: "go_proxy#chat_room_messages"
+      get "chat/admin/queue", to: "go_proxy#chat_admin_queue"
+      post "chat/admin/rooms/:room_id/join", to: "go_proxy#chat_admin_join"
+      post "chat/admin/rooms/:room_id/messages", to: "go_proxy#chat_admin_message"
+      post "chat/admin/rooms/:room_id/close", to: "go_proxy#chat_admin_close"
+      get "cart/admin/events", to: "go_proxy#cart_admin_events"
+      get "favorites/admin/events", to: "go_proxy#favorites_admin_events"
 
       get "config", to: "config#show"
       get "auth/me", to: "auth#me"

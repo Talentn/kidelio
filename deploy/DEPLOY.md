@@ -4,7 +4,7 @@
 
 ```
 Internet → daizo-nginx (Docker, :443) → 172.17.0.1:7675  Rails (SPA + /api)
-                                        Rails proxies /api/v1/realtime → go-service:3010 (chat, cart, favorites)
+                                        Rails /api/v1/chat|cart|favorites → go-service:3010
 ```
 
 **Important:** If nginx runs inside Docker (`daizo-nginx`), it reaches the host via the
@@ -14,7 +14,7 @@ to `127.0.0.1` only — use `7675:3000` and `3010:3010` so they listen on all in
 | Service | Container | Host port | Public path |
 |---------|-----------|-----------|-------------|
 | Rails | `web` | `7675` → container `3000` | `/`, `/api/` |
-| Go | `go-service` | `3010` | `/api/v1/realtime/` (via Rails proxy) |
+| Go | `go-service` | `3010` | `/api/v1/chat/*`, `/api/v1/cart/ws`, etc. |
 
 ## One-time VPS setup
 
@@ -111,7 +111,7 @@ docker exec daizo-nginx curl -s http://172.17.0.1:7675/up
 docker exec daizo-nginx curl -s http://172.17.0.1:3010/health
 ```
 
-Go is reached at `/api/v1/realtime/` through Rails. On shared `daizo-nginx`, avoid `/go/`, `/api/go/`, and **`/api/v1/live/`** (that path is reserved for Daizo Next.js).
+Go is reached through explicit Rails routes (`/api/v1/chat/rooms`, etc.). On shared `daizo-nginx`, avoid `/go/`, `/api/go/`, `/api/v1/live/`, `/api/v1/realtime/` (those hit Daizo Next.js).
 
 ### `deploy-web-1 is unhealthy`
 
@@ -148,8 +148,8 @@ docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0
 
 | Symptom | Check |
 |---------|-------|
-| Chat button does nothing | `POST /api/v1/realtime/chat/rooms` must return `{"room_id":"..."}` — never use `/api/v1/live/` (Daizo Next.js) |
-| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/v1/realtime` |
-| WebSocket fails | Go container healthy; Rails `/api/v1/realtime` proxy supports Upgrade |
+| Chat button does nothing | Test `curl -X POST http://127.0.0.1:7675/api/v1/chat/rooms -H 'Content-Type: application/json' -d '{"name":"Test"}'` then public URL; avoid `/realtime`/`/live` paths |
+| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/v1/chat` |
+| WebSocket fails | Go container healthy; `wss://…/api/v1/chat/ws/{room_id}` via Rails middleware |
 | Go unhealthy | `docker compose -f deploy/docker-compose.prod.yml logs go-service` |
 | Chat queue stale | Restart Go: `docker compose -f deploy/docker-compose.prod.yml restart go-service` |
