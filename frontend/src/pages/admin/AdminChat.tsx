@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, Send, X, Circle, User } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
-import { goWsUrl, goGet, goPost } from '../../lib/goApi'
+import { goWsUrl, goGet, goPost, goWsEnabled } from '../../lib/goApi'
 
 type ChatMsg = {
   id: string
@@ -42,13 +42,22 @@ export function AdminChat() {
     activeRoomRef.current = activeRoom?.id ?? null
   }, [activeRoom])
 
-  useEffect(() => {
+  const refreshQueue = () =>
     goGet<{ rooms: Room[] }>('/chat/admin/queue')
       .then(data => setQueue(data.rooms || []))
       .catch(() => {})
+
+  // Queue snapshot — poll when WebSocket is off (shared nginx cannot upgrade WS)
+  useEffect(() => {
+    refreshQueue()
+    if (goWsEnabled()) return
+    setConnected(true)
+    const id = setInterval(refreshQueue, 3000)
+    return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
+    if (!goWsEnabled()) return
     const ws = new WebSocket(goWsUrl('/chat/admin/ws'))
     wsRef.current = ws
 
@@ -99,6 +108,23 @@ export function AdminChat() {
     }
     return () => ws.close()
   }, [])
+
+  // Poll active room messages when WebSocket is unavailable
+  useEffect(() => {
+    if (!joined || !activeRoom || goWsEnabled()) return
+    const roomId = activeRoom.id
+    const refresh = () =>
+      goGet<{ messages: ChatMsg[] }>(`/chat/rooms/${roomId}/messages`)
+        .then(data => {
+          if (activeRoomRef.current === roomId && data.messages?.length) {
+            setMsgs(data.messages)
+          }
+        })
+        .catch(() => {})
+    refresh()
+    const id = setInterval(refresh, 2500)
+    return () => clearInterval(id)
+  }, [joined, activeRoom])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

@@ -150,6 +150,6 @@ docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0
 |---------|-------|
 | Chat button does nothing | Test `curl -X POST http://127.0.0.1:7675/api/v1/chat/rooms -H 'Content-Type: application/json' -d '{"name":"Test"}'` then public URL; avoid `/realtime`/`/live` paths |
 | Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/v1/chat` |
-| WebSocket fails | Go container healthy; `wss://…/api/v1/chat/ws/{room_id}` via Rails middleware |
+| WebSocket fails (Firefox console) | Normal on shared nginx — chat uses HTTP polling. To enable WS: add `deploy/daizo-nginx-chat-ws.conf` to daizo-nginx, set `VITE_ENABLE_CHAT_WS=true`, redeploy |
 | Go unhealthy | `docker compose -f deploy/docker-compose.prod.yml logs go-service` |
 | Chat queue stale | Restart Go: `docker compose -f deploy/docker-compose.prod.yml restart go-service` |

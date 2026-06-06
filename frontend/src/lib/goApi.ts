@@ -1,6 +1,14 @@
 // Go service — REST + WS under /api/v1/* (explicit Rails routes; avoid /realtime, /live, /go)
 const GO_BASE = '/api/v1'
 
+/** WebSocket needs nginx → Go directly; off in production until VITE_ENABLE_CHAT_WS=true */
+export function goWsEnabled(): boolean {
+  const flag = import.meta.env.VITE_ENABLE_CHAT_WS
+  if (flag === 'true') return true
+  if (flag === 'false') return false
+  return import.meta.env.DEV
+}
+
 export function goUrl(path: string) {
   return `${GO_BASE}${path}`
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, X, Send, Loader2, ChevronDown } from 'lucide-react'
-import { goPost, goGet, goWsUrl } from '../lib/goApi'
+import { goPost, goGet, goWsUrl, goWsEnabled } from '../lib/goApi'
 import { useAuth } from '../context/AuthContext'
 
 type Msg = {
@@ -56,9 +56,9 @@ export function ChatWidget() {
     return () => clearInterval(id)
   }, [roomId, step, wsLive])
 
-  // Try WebSocket for live updates; HTTP polling is the fallback
+  // WebSocket only when enabled (dev or VITE_ENABLE_CHAT_WS=true); prod uses HTTP polling
   useEffect(() => {
-    if (!roomId) return
+    if (!roomId || !goWsEnabled()) return
     setWsLive(false)
     const ws = new WebSocket(goWsUrl(`/chat/ws/${roomId}`))
     wsRef.current = ws
