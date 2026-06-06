@@ -4,7 +4,7 @@
 
 ```
 Internet → daizo-nginx (Docker, :443) → 172.17.0.1:7675  Rails (SPA + /api)
-                                        → 172.17.0.1:3010  Go (/go → chat, cart, favorites)
+                                        Rails proxies /api/go → go-service:3010 (chat, cart, favorites)
 ```
 
 **Important:** If nginx runs inside Docker (`daizo-nginx`), it reaches the host via the
@@ -14,7 +14,7 @@ to `127.0.0.1` only — use `7675:3000` and `3010:3010` so they listen on all in
 | Service | Container | Host port | Public path |
 |---------|-----------|-----------|-------------|
 | Rails | `web` | `7675` → container `3000` | `/`, `/api/` |
-| Go | `go-service` | `3010` | `/go/` |
+| Go | `go-service` | `3010` | `/api/go/` (via Rails proxy) |
 
 ## One-time VPS setup
 
@@ -111,7 +111,7 @@ docker exec daizo-nginx curl -s http://172.17.0.1:7675/up
 docker exec daizo-nginx curl -s http://172.17.0.1:3010/health
 ```
 
-Ensure daizo-nginx also proxies `/go/` to `http://172.17.0.1:3010`.
+Go is reached at `/api/go/` through Rails — do **not** use a top-level `/go/` nginx block on shared `daizo-nginx` (that path may belong to another site).
 
 ### `deploy-web-1 is unhealthy`
 
@@ -148,8 +148,8 @@ docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0
 
 | Symptom | Check |
 |---------|-------|
-| Chat button does nothing | `POST /go/chat/rooms` must not return Rails 404 — Rails proxies `/go` to Go when nginx does not; redeploy after pulling |
-| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/go` |
-| WebSocket fails | nginx `/go/` block has Upgrade headers; Go container healthy; or rely on Rails `/go` proxy |
+| Chat button does nothing | `POST /api/go/chat/rooms` must return `{"room_id":"..."}` — redeploy after pulling; avoid `/go/` (conflicts with daizo-nginx) |
+| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/go` |
+| WebSocket fails | Go container healthy; Rails `/api/go` proxy supports Upgrade |
 | Go unhealthy | `docker compose -f deploy/docker-compose.prod.yml logs go-service` |
 | Chat queue stale | Restart Go: `docker compose -f deploy/docker-compose.prod.yml restart go-service` |

@@ -1,5 +1,5 @@
-# Proxies /go/* to the Go service (chat, cart events, favorites).
-# Used when nginx forwards all traffic to Rails without a dedicated /go/ block.
+# Proxies /api/go/* to the Go service (chat, cart events, favorites).
+# Mounted under /api so shared nginx (daizo-nginx) does not steal /go for another site.
 require "rack/proxy"
 
 class GoServiceProxy < Rack::Proxy

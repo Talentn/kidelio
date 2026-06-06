@@ -10,12 +10,6 @@ export default defineConfig({
       '/rails':  { target: 'http://localhost:3001', changeOrigin: true },
       '/users':  { target: 'http://localhost:3001', changeOrigin: true },
       '/health': { target: 'http://localhost:3001', changeOrigin: true },
-      '/go': {
-        target: 'http://localhost:3010',
-        changeOrigin: true,
-        ws: true,
-        rewrite: (path) => path.replace(/^\/go/, ''),
-      },
     },
   },
   build: {

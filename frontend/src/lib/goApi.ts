@@ -1,5 +1,5 @@
-// Go service — proxied via Vite (/go) in dev and nginx (/go) in production
-const GO_BASE = '/go'
+// Go service — proxied via Rails at /api/go (dev: Vite → Rails → Go; prod: nginx → Rails → Go)
+const GO_BASE = '/api/go'
 
 export function goUrl(path: string) {
   return `${GO_BASE}${path}`
@@ -7,7 +7,7 @@ export function goUrl(path: string) {
 
 export function goWsUrl(path: string) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${proto}://${location.host}/go${path}`
+  return `${proto}://${location.host}/api/go${path}`
 }
 
 export async function goPost<T>(path: string, body: unknown): Promise<T> {

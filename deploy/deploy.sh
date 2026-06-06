@@ -118,5 +118,5 @@ docker image prune -f
 echo ""
 echo "Deploy complete."
 echo "  Site : https://kideliowear.com"
-echo "  Go   : proxied at /go (chat, cart, favorites)"
+echo "  Go   : proxied at /api/go (chat, cart, favorites)"
 echo "  Check: $COMPOSE ps"

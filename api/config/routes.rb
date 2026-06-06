@@ -5,6 +5,9 @@ Rails.application.routes.draw do
 
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
+    # Go service (chat, live cart/favorites) — proxied to go-service container
+    mount GoServiceProxy.new => "/go"
+
     namespace :v1 do
       get "config", to: "config#show"
       get "auth/me", to: "auth#me"
@@ -62,15 +65,12 @@ Rails.application.routes.draw do
     end
   end
 
-  # Go service — chat, live cart/favorites (fallback when nginx has no /go/ block)
-  mount GoServiceProxy.new => "/go"
-
   # Production: serve React build (npm run build)
   devise_for :users, only: :omniauth_callbacks, controllers: { omniauth_callbacks: "users/omniauth_callbacks" }
 
   spa = ->(req) {
     path = req.path
-    %w[/api /rails /health /up /ws /sockjs /users /sitemap.xml /go].none? { |p| path.start_with?(p) }
+    %w[/api /rails /health /up /ws /sockjs /users /sitemap.xml].none? { |p| path.start_with?(p) }
   }
   root "spa#index", constraints: spa
   get "*path", to: "spa#index", constraints: spa
