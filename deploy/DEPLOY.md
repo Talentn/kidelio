@@ -4,7 +4,7 @@
 
 ```
 Internet → daizo-nginx (Docker, :443) → 172.17.0.1:7675  Rails (SPA + /api)
-                                        Rails proxies /api/go → go-service:3010 (chat, cart, favorites)
+                                        Rails proxies /api/v1/live → go-service:3010 (chat, cart, favorites)
 ```
 
 **Important:** If nginx runs inside Docker (`daizo-nginx`), it reaches the host via the
@@ -14,7 +14,7 @@ to `127.0.0.1` only — use `7675:3000` and `3010:3010` so they listen on all in
 | Service | Container | Host port | Public path |
 |---------|-----------|-----------|-------------|
 | Rails | `web` | `7675` → container `3000` | `/`, `/api/` |
-| Go | `go-service` | `3010` | `/api/go/` (via Rails proxy) |
+| Go | `go-service` | `3010` | `/api/v1/live/` (via Rails proxy) |
 
 ## One-time VPS setup
 
@@ -111,7 +111,7 @@ docker exec daizo-nginx curl -s http://172.17.0.1:7675/up
 docker exec daizo-nginx curl -s http://172.17.0.1:3010/health
 ```
 
-Go is reached at `/api/go/` through Rails — do **not** use a top-level `/go/` nginx block on shared `daizo-nginx` (that path may belong to another site).
+Go is reached at `/api/v1/live/` through Rails. On shared `daizo-nginx`, only `/api/v1/*` is routed to Kidelio — do **not** use `/go/` or `/api/go/` (those hit Daizo).
 
 ### `deploy-web-1 is unhealthy`
 
@@ -148,8 +148,8 @@ docker compose -f deploy/docker-compose.prod.yml exec web curl -f http://127.0.0
 
 | Symptom | Check |
 |---------|-------|
-| Chat button does nothing | `POST /api/go/chat/rooms` must return `{"room_id":"..."}` — redeploy after pulling; avoid `/go/` (conflicts with daizo-nginx) |
-| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/go` |
-| WebSocket fails | Go container healthy; Rails `/api/go` proxy supports Upgrade |
+| Chat button does nothing | `POST /api/v1/live/chat/rooms` must return `{"room_id":"..."}` — redeploy; `/api/go` hits Daizo on shared nginx |
+| Admin chat 401 | Logged in as admin/employee? Session cookie must reach `/api/v1/live` |
+| WebSocket fails | Go container healthy; Rails `/api/v1/live` proxy supports Upgrade |
 | Go unhealthy | `docker compose -f deploy/docker-compose.prod.yml logs go-service` |
 | Chat queue stale | Restart Go: `docker compose -f deploy/docker-compose.prod.yml restart go-service` |

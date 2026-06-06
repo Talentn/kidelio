@@ -5,10 +5,10 @@ Rails.application.routes.draw do
 
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
-    # Go service (chat, live cart/favorites) — proxied to go-service container
-    mount GoServiceProxy.new => "/go"
-
     namespace :v1 do
+      # Go service (chat, live cart/favorites) — must live under /api/v1/ on shared nginx
+      mount GoServiceProxy.new => "/live"
+
       get "config", to: "config#show"
       get "auth/me", to: "auth#me"
       post "auth/register", to: "auth#register"
