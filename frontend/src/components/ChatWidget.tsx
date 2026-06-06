@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, X, Send, Loader2, ChevronDown } from 'lucide-react'
 import { goPost, goGet, goWsUrl, goWsEnabled } from '../lib/goApi'
+import { chatAgentLabel } from '../lib/chatDisplay'
 import { useAuth } from '../context/AuthContext'
 
 type Msg = {
@@ -218,7 +219,9 @@ export function ChatWidget() {
                         }`}
                       >
                         {m.sender_type === 'agent' && (
-                          <p className="text-[10px] font-bold text-brand-600 mb-0.5">{m.sender_name}</p>
+                          <p className="text-[10px] font-bold text-brand-600 mb-0.5">
+                            {chatAgentLabel(m.sender_type, m.sender_name)}
+                          </p>
                         )}
                         {m.content}
                       </div>

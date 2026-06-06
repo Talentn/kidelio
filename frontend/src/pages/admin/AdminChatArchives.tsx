@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Archive, MessageCircle, Search, User, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
 import { goGet } from '../../lib/goApi'
+import { chatAgentLabel } from '../../lib/chatDisplay'
 
 type ChatMsg = {
   id: string
@@ -168,7 +169,7 @@ export function AdminChatArchives() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-900 truncate">{room.user_name}</p>
                     <p className="text-[11px] text-gray-400 truncate">
-                      {room.agent_name ? `Agent : ${room.agent_name}` : 'Sans agent'}
+                      {room.agent_name ? 'Agent : Support' : 'Sans agent'}
                       {room.message_count > 0 && ` · ${room.message_count} msg`}
                     </p>
                   </div>
@@ -221,7 +222,7 @@ export function AdminChatArchives() {
                     <p className="text-sm font-bold text-gray-900">{selected.user_name}</p>
                     <p className="text-[11px] text-gray-400">
                       {selected.user_email || 'Invité'}
-                      {selected.agent_name && ` · Agent : ${selected.agent_name}`}
+                      {selected.agent_name && ' · Agent : Support'}
                     </p>
                     <p className="text-[11px] text-gray-400">
                       Ouverte {formatDate(selected.created_at)} · Clôturée {formatDate(selected.updated_at)}
@@ -245,8 +246,12 @@ export function AdminChatArchives() {
                           ? 'bg-brand-500 text-white rounded-br-sm'
                           : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                       }`}>
-                        {m.sender_type === 'user' && (
-                          <p className="text-[10px] font-bold text-brand-600 mb-0.5">{m.sender_name}</p>
+                        {(m.sender_type === 'user' || m.sender_type === 'agent') && (
+                          <p className={`text-[10px] font-bold mb-0.5 ${
+                            m.sender_type === 'agent' ? 'text-white/80' : 'text-brand-600'
+                          }`}>
+                            {m.sender_type === 'user' ? m.sender_name : chatAgentLabel(m.sender_type, m.sender_name)}
+                          </p>
                         )}
                         <p className="whitespace-pre-wrap">{m.content}</p>
                         <p className={`text-[9px] mt-1 ${

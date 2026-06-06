@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Shield, UserCircle, UserPlus, Search, Loader2 } from 'lucide-react'
+import { Users, Shield, UserCircle, UserPlus, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { apiAdmin } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { AdminPage, Card, Modal, useToast } from '../../components/admin/ui'
 
 type AdminUser = {
@@ -22,6 +23,136 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const STAFF_ROLES = ['admin', 'employee'] as const
+type UserRole = 'client' | 'employee' | 'admin'
+
+function EditUserModal({
+  user,
+  open,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser | null
+  open: boolean
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { notify } = useToast()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    role: 'client' as UserRole,
+    password: '',
+  })
+
+  useEffect(() => {
+    if (!user || !open) return
+    setForm({
+      name: user.name,
+      phone: user.phone || '',
+      role: user.role as UserRole,
+      password: '',
+    })
+    setError('')
+  }, [user, open])
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+
+    setSaving(true)
+    setError('')
+    try {
+      const body: Record<string, string> = {
+        name: form.name,
+        phone: form.phone,
+        role: form.role,
+      }
+      if (form.password.trim()) body.password = form.password
+
+      const data = await apiAdmin<{ user: AdminUser }>(`/users/${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+      notify(`Compte de ${data.user.name} mis à jour`)
+      onSaved()
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!user) return null
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Modifier — ${user.name}`} size="md">
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-slate-500">{user.email}</p>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nom *</label>
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Téléphone</label>
+          <input
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Rôle</label>
+          <select
+            value={form.role}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
+          >
+            {Object.entries(ROLE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+            Nouveau mot de passe
+            <span className="normal-case font-normal text-slate-400"> (laisser vide pour ne pas changer)</span>
+          </label>
+          <input
+            type="password"
+            minLength={8}
+            value={form.password}
+            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
+            placeholder="Min. 8 caractères"
+          />
+        </div>
+
+        {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
+        >
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Pencil size={18} />}
+          Enregistrer
+        </button>
+      </form>
+    </Modal>
+  )
+}
 
 function AddStaffModal({
   open,
@@ -48,7 +179,7 @@ function AddStaffModal({
     email: '',
     phone: '',
     password: '',
-    role: 'admin' as 'admin' | 'employee',
+    role: 'client' as UserRole,
   })
 
   const promotableUsers = useMemo(() => {
@@ -68,7 +199,7 @@ function AddStaffModal({
     setSelectedUserId('')
     setPromoteRole('admin')
     setUserSearch('')
-    setForm({ name: '', email: '', phone: '', password: '', role: 'admin' })
+    setForm({ name: '', email: '', phone: '', password: '', role: 'client' })
   }, [open])
 
   const promoteExisting = async (e: FormEvent) => {
@@ -115,7 +246,7 @@ function AddStaffModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Ajouter un administrateur" size="lg">
+    <Modal open={open} onClose={onClose} title="Créer un compte" size="lg">
       <div className="flex gap-2 mb-5 p-1 bg-slate-100 rounded-xl">
         {([
           { id: 'existing' as const, label: 'Utilisateur existant' },
@@ -205,7 +336,7 @@ function AddStaffModal({
       ) : (
         <form onSubmit={createNew} className="space-y-4">
           <p className="text-sm text-slate-500">
-            Créez un nouveau compte avec accès au back-office (connexion email / mot de passe).
+            Créez un compte client ou staff. Les comptes staff nécessitent un mot de passe pour se connecter.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -247,30 +378,36 @@ function AddStaffModal({
 
           <div>
             <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Mot de passe * <span className="normal-case font-normal">(min. 8 caractères)</span>
+              Rôle *
+            </label>
+            <select
+              value={form.role}
+              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
+            >
+              {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              Mot de passe {STAFF_ROLES.includes(form.role as typeof STAFF_ROLES[number]) ? '*' : ''}
+              <span className="normal-case font-normal text-slate-400">
+                {STAFF_ROLES.includes(form.role as typeof STAFF_ROLES[number])
+                  ? ' (min. 8 caractères)'
+                  : ' (optionnel pour un client)'}
+              </span>
             </label>
             <input
-              required
+              required={STAFF_ROLES.includes(form.role as typeof STAFF_ROLES[number])}
               type="password"
               minLength={8}
               value={form.password}
               onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
             />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-              Rôle *
-            </label>
-            <select
-              value={form.role}
-              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as 'admin' | 'employee' }))}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
-            >
-              <option value="admin">Administrateur</option>
-              <option value="employee">Employé</option>
-            </select>
           </div>
 
           {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
@@ -291,10 +428,12 @@ function AddStaffModal({
 
 export function AdminUsers() {
   const { notify } = useToast()
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editUser, setEditUser] = useState<AdminUser | null>(null)
   const [filter, setFilter] = useState<'all' | 'staff' | 'client'>('all')
   const [search, setSearch] = useState('')
 
@@ -319,6 +458,25 @@ export function AdminUsers() {
       return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     })
   }, [users, filter, search])
+
+  const deleteUser = async (user: AdminUser) => {
+    if (user.id === currentUser?.id) {
+      notify('Vous ne pouvez pas supprimer votre propre compte', 'error')
+      return
+    }
+    if (!window.confirm(`Supprimer définitivement le compte de ${user.name} (${user.email}) ?`)) return
+
+    setSavingId(user.id)
+    try {
+      await apiAdmin(`/users/${user.id}`, { method: 'DELETE' })
+      setUsers((prev) => prev.filter((u) => u.id !== user.id))
+      notify(`Compte de ${user.name} supprimé`)
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : 'Erreur', 'error')
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const updateRole = async (user: AdminUser, role: string) => {
     if (user.role === role) return
@@ -349,7 +507,7 @@ export function AdminUsers() {
           className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors"
         >
           <UserPlus size={16} />
-          Ajouter un admin
+          Créer un compte
         </button>
       }
     >
@@ -415,6 +573,7 @@ export function AdminUsers() {
                   <th className="px-5 py-3 font-semibold">Commandes</th>
                   <th className="px-5 py-3 font-semibold">Points</th>
                   <th className="px-5 py-3 font-semibold">Rôle</th>
+                  <th className="px-5 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -443,7 +602,7 @@ export function AdminUsers() {
                         <Shield size={14} className="text-slate-400 flex-shrink-0" />
                         <select
                           value={user.role}
-                          disabled={savingId === user.id}
+                          disabled={savingId === user.id || user.id === currentUser?.id}
                           onChange={(e) => updateRole(user, e.target.value)}
                           className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-semibold bg-white focus:ring-2 focus:ring-brand-300 outline-none"
                         >
@@ -451,6 +610,27 @@ export function AdminUsers() {
                             <option key={value} value={value}>{label}</option>
                           ))}
                         </select>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditUser(user)}
+                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-brand-600 transition-colors"
+                          aria-label={`Modifier ${user.name}`}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteUser(user)}
+                          disabled={savingId === user.id || user.id === currentUser?.id}
+                          className="p-2 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 transition-colors"
+                          aria-label={`Supprimer ${user.name}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -465,6 +645,13 @@ export function AdminUsers() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         users={users}
+        onSaved={load}
+      />
+
+      <EditUserModal
+        user={editUser}
+        open={!!editUser}
+        onClose={() => setEditUser(null)}
         onSaved={load}
       />
     </AdminPage>

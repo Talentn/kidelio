@@ -14,8 +14,11 @@ module Api
 
       def update
         order = Order.find(params[:id])
+        previous_status = order.status
+
         if order.update(order_params)
-          render json: { order: admin_order_json(order) }
+          handle_loyalty_status_change!(order, previous_status)
+          render json: { order: admin_order_json(order.reload) }
         else
           render json: { errors: order.errors.full_messages }, status: :unprocessable_entity
         end
@@ -25,6 +28,24 @@ module Api
 
       def order_params
         params.permit(:status, :notes)
+      end
+
+      def handle_loyalty_status_change!(order, previous_status)
+        return if previous_status == order.status
+
+        cancelled = %w[cancelled refunded]
+        if cancelled.include?(order.status) && cancelled.exclude?(previous_status)
+          LoyaltyProgram.reverse_order!(order)
+          refund_wallet!(order) if order.wallet_amount.to_d.positive?
+        elsif cancelled.include?(previous_status) && cancelled.exclude?(order.status)
+          LoyaltyProgram.record_order!(order) unless order.loyalty_counted?
+        end
+      end
+
+      def refund_wallet!(order)
+        return unless order.user
+
+        order.user.increment!(:wallet_balance, order.wallet_amount.to_d)
       end
 
       def admin_order_json(order, detail: false)

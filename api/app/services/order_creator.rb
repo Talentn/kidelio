@@ -38,16 +38,19 @@ class OrderCreator
     promo_code_str = nil
     if @params[:promo_code].present?
       promo = PromoCode.active.find_by("LOWER(code) = ?", @params[:promo_code].downcase)
-      raise Error, "Code promo invalide" unless promo&.usable?
+      raise Error, "Code promo invalide" unless promo&.usable?(for_user: @user)
       if promo.min_order_amount.present? && subtotal < promo.min_order_amount
         raise Error, "Montant minimum non atteint"
       end
-      discount = promo.apply_to(subtotal)
+      discount = promo.apply_to(subtotal, for_user: @user)
       promo_code_str = promo.code
     end
 
+    wallet_used = wallet_amount_to_apply(subtotal, discount)
+
     shipping = Order.calculate_shipping(subtotal)
-    total = subtotal - discount + shipping
+    total = subtotal - discount - wallet_used + shipping
+    raise Error, "Montant invalide" if total < 0
 
     Order.transaction do
       order = Order.create!(
@@ -62,6 +65,7 @@ class OrderCreator
         subtotal: subtotal,
         shipping_cost: shipping,
         discount_amount: discount,
+        wallet_amount: wallet_used,
         total: total,
         promo_code: promo_code_str,
         payment_method: @params[:payment_method] || "cash",
@@ -78,7 +82,24 @@ class OrderCreator
         PromoCode.find_by(code: promo_code_str)&.increment!(:used_count)
       end
 
+      if @user
+        @user.decrement!(:wallet_balance, wallet_used) if wallet_used.positive?
+        LoyaltyProgram.record_order!(order)
+      end
+
       order
     end
+  end
+
+  private
+
+  def wallet_amount_to_apply(subtotal, promo_discount)
+    return 0.to_d unless @user
+    return 0.to_d unless @params[:use_wallet].present? &&
+      ActiveModel::Type::Boolean.new.cast(@params[:use_wallet])
+
+    available = @user.wallet_balance.to_d
+    payable = subtotal - promo_discount
+    [available, payable].min.clamp(0..)
   end
 end

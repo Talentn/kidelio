@@ -2,6 +2,8 @@ class PromoCode < ApplicationRecord
   include Auditable
   audit_as "PromoCode"
 
+  belongs_to :user, optional: true
+
   enum :discount_type, { percentage: 0, fixed: 1 }
 
   validates :code, :discount_value, presence: true
@@ -12,8 +14,8 @@ class PromoCode < ApplicationRecord
 
   scope :active, -> { where(active: true).where("expires_at IS NULL OR expires_at > ?", Time.current) }
 
-  def apply_to(subtotal)
-    return 0.to_d unless usable?
+  def apply_to(subtotal, for_user: nil)
+    return 0.to_d unless usable?(for_user: for_user)
 
     amount = if percentage?
       subtotal * (discount_value / 100)
@@ -24,9 +26,10 @@ class PromoCode < ApplicationRecord
     [amount, subtotal].min
   end
 
-  def usable?
+  def usable?(for_user: nil)
     active? && (expires_at.nil? || expires_at > Time.current) &&
-      (usage_limit.nil? || used_count < usage_limit)
+      (usage_limit.nil? || used_count < usage_limit) &&
+      (user_id.nil? || (for_user.present? && user_id == for_user.id))
   end
 
   def audit_label

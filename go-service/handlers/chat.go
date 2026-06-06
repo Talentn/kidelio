@@ -20,6 +20,9 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+// Shown to customers — never expose staff personal names in chat.
+const agentDisplayName = "Support"
+
 type wsMsg struct {
 	Type    string `json:"type"`
 	Content string `json:"content,omitempty"`
@@ -199,12 +202,12 @@ func CustomerWS(w http.ResponseWriter, r *http.Request) {
 // ── WS /chat/admin/ws — agent WebSocket ──────────────────────────────────────
 
 func deliverAgentMessage(roomID string, user *middleware.RailsUser, content string) (*store.Message, error) {
-	_ = store.AssignAgent(roomID, user.ID, user.Name)
+	_ = store.AssignAgent(roomID, user.ID, agentDisplayName)
 	m := &store.Message{
 		ID:         uuid.NewString(),
 		RoomID:     roomID,
 		SenderType: "agent",
-		SenderName: user.Name,
+		SenderName: agentDisplayName,
 		Content:    content,
 		CreatedAt:  time.Now(),
 	}
@@ -218,7 +221,7 @@ func deliverAgentMessage(roomID string, user *middleware.RailsUser, content stri
 }
 
 func joinAgentRoom(roomID string, user *middleware.RailsUser) (*store.Room, []store.Message, error) {
-	if err := store.AssignAgent(roomID, user.ID, user.Name); err != nil {
+	if err := store.AssignAgent(roomID, user.ID, agentDisplayName); err != nil {
 		return nil, nil, err
 	}
 	room, err := store.GetRoom(roomID)
@@ -230,7 +233,7 @@ func joinAgentRoom(roomID string, user *middleware.RailsUser) (*store.Room, []st
 		RoomID:     roomID,
 		SenderType: "system",
 		SenderName: "Kidelio",
-		Content:    user.Name + " a rejoint la conversation.",
+		Content:    agentDisplayName + " a rejoint la conversation.",
 		CreatedAt:  time.Now(),
 	}
 	_ = store.SaveMessage(sysMsg)

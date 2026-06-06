@@ -27,6 +27,7 @@ const Contact       = lazy(() => import("./pages/Contact").then(m => ({ default:
 const OrderSuccess  = lazy(() => import("./pages/OrderSuccess").then(m => ({ default: m.OrderSuccess })));
 const TrackOrder    = lazy(() => import("./pages/TrackOrder").then(m => ({ default: m.TrackOrder })));
 const Favorites     = lazy(() => import("./pages/Favorites").then(m => ({ default: m.Favorites })));
+const Rewards       = lazy(() => import("./pages/Rewards").then(m => ({ default: m.Rewards })));
 
 // ── Admin pages (lazy — never loaded by regular shoppers) ────────────────────
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -78,6 +79,7 @@ function App() {
                     <Route path="connexion" element={<Login />} />
                     <Route path="inscription" element={<Register />} />
                     <Route path="compte" element={<Account />} />
+                    <Route path="recompenses" element={<Rewards />} />
                     <Route path="contact" element={<Contact />} />
                     <Route path="commande/:orderNumber" element={<OrderSuccess />} />
                     <Route path="suivi" element={<TrackOrder />} />

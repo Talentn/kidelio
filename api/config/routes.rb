@@ -51,6 +51,8 @@ Rails.application.routes.draw do
       end
       resources :addresses, only: %i[index create update destroy]
       post "promo-codes/validate", to: "promo_codes#validate_code"
+      get "rewards", to: "rewards#show"
+      post "rewards/claim", to: "rewards#claim"
       resources :contact_messages, only: [:create], path: "contact"
     end
 
@@ -70,7 +72,7 @@ Rails.application.routes.draw do
       resources :contact_messages, only: %i[index update], path: "contact-messages"
       resources :promo_popups, path: "promo-popups"
       resources :promo_codes, path: "promo-codes", only: %i[index create update destroy]
-      resources :users, only: %i[index create update]
+      resources :users, only: %i[index create update destroy]
       get "homepage", to: "homepage#show"
       patch "homepage/assets/:key", to: "homepage#update_asset"
       resources :hero_sliders, only: %i[index create update destroy], path: "hero-sliders"

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { MessageCircle, Send, X, Circle, User, Archive } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
 import { goWsUrl, goGet, goPost, goWsEnabled } from '../../lib/goApi'
+import { chatAgentLabel } from '../../lib/chatDisplay'
 
 type ChatMsg = {
   id: string
@@ -304,8 +305,12 @@ export function AdminChat() {
                           ? 'bg-brand-500 text-white rounded-br-sm'
                           : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                       }`}>
-                        {m.sender_type === 'user' && (
-                          <p className="text-[10px] font-bold text-brand-600 mb-0.5">{m.sender_name}</p>
+                        {(m.sender_type === 'user' || m.sender_type === 'agent') && (
+                          <p className={`text-[10px] font-bold mb-0.5 ${
+                            m.sender_type === 'agent' ? 'text-white/80' : 'text-brand-600'
+                          }`}>
+                            {m.sender_type === 'user' ? m.sender_name : chatAgentLabel(m.sender_type, m.sender_name)}
+                          </p>
                         )}
                         {m.content}
                       </div>

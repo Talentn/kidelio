@@ -7,8 +7,8 @@ module Api
         promo = PromoCode.active.find_by("LOWER(code) = ?", params[:code].to_s.downcase)
         subtotal = params[:subtotal].to_d
 
-        if promo&.usable? && (promo.min_order_amount.nil? || subtotal >= promo.min_order_amount)
-          discount = promo.apply_to(subtotal)
+        if promo&.usable?(for_user: Current.user) && (promo.min_order_amount.nil? || subtotal >= promo.min_order_amount)
+          discount = promo.apply_to(subtotal, for_user: Current.user)
           render json: {
             valid: true,
             code: promo.code,

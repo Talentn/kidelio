@@ -133,6 +133,7 @@ export function AdminOrders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -157,6 +158,20 @@ export function AdminOrders() {
 
   const onStatusChange = (id: number, status: string) =>
     setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)));
+
+  const updateStatusInline = async (order: Order, status: string) => {
+    if (order.status === status) return;
+    setUpdatingId(order.id);
+    try {
+      await apiAdmin(`/orders/${order.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      onStatusChange(order.id, status);
+      notify("Statut mis à jour");
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const filtered = useMemo(() => orders.filter((o) => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
@@ -201,19 +216,36 @@ export function AdminOrders() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((o) => (
-                  <tr key={o.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setDetailId(o.id)}>
-                    <td className="px-4 py-3 font-bold text-slate-900">{o.order_number}</td>
-                    <td className="px-4 py-3">
+                  <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 font-bold text-slate-900 cursor-pointer" onClick={() => setDetailId(o.id)}>{o.order_number}</td>
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => setDetailId(o.id)}>
                       <p className="font-semibold text-slate-800">{o.guest_name ?? o.user?.name ?? "—"}</p>
                       <p className="text-xs text-slate-400">{o.guest_phone}</p>
                     </td>
-                    <td className="px-4 py-3 text-slate-500 hidden md:table-cell">
+                    <td className="px-4 py-3 text-slate-500 hidden md:table-cell cursor-pointer" onClick={() => setDetailId(o.id)}>
                       {o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : "—"}
                     </td>
-                    <td className="px-4 py-3 font-bold text-slate-900">{Number(o.total).toFixed(3)} TND</td>
-                    <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
+                    <td className="px-4 py-3 font-bold text-slate-900 cursor-pointer" onClick={() => setDetailId(o.id)}>{Number(o.total).toFixed(3)} TND</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={o.status}
+                        disabled={updatingId === o.id}
+                        onChange={(e) => updateStatusInline(o, e.target.value)}
+                        className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold bg-white focus:ring-2 focus:ring-brand-300 outline-none min-w-[9.5rem]"
+                        aria-label={`Statut commande ${o.order_number}`}
+                      >
+                        {ORDER_STATUSES.map((s) => (
+                          <option key={s} value={s}>{orderStatusLabel(s)}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <button type="button" className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" aria-label="Voir">
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(o.id)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        aria-label="Voir le détail"
+                      >
                         <Eye size={16} />
                       </button>
                     </td>

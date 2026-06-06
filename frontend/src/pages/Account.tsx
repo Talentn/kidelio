@@ -66,7 +66,10 @@ export function Account() {
               <Star size={16} className="text-amber-300" />
               <span className="text-white/80 text-xs font-semibold">Points fidélité</span>
             </div>
-            <p className="font-bold text-2xl">{user.fidelity_points ?? 0}</p>
+            <p className="font-bold text-2xl">{user.fidelity_points?.toLocaleString('fr-FR') ?? 0}</p>
+            <Link to="/recompenses" className="text-[11px] text-white/80 hover:text-white underline mt-1 inline-block">
+              Voir progression
+            </Link>
           </div>
           <div className="bg-white/15 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -80,6 +83,7 @@ export function Account() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
         {[
+          { label: 'Mes récompenses', to: '/recompenses', icon: Star },
           { label: 'Continuer mes achats', to: '/produits', icon: ShoppingBag },
           { label: 'Suivre une commande', to: '/suivi', icon: PackageSearch },
           { label: 'Nous contacter', to: '/contact', icon: MessageCircle },

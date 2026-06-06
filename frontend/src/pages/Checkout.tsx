@@ -50,6 +50,7 @@ export function Checkout() {
   const [error, setError] = useState('')
   const [promoError, setPromoError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [useWallet, setUseWallet] = useState(false)
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(() =>
     peekCacheV1<{ addresses: SavedAddress[] }>('/addresses')?.addresses ?? []
@@ -65,8 +66,12 @@ export function Checkout() {
   const [delegation, setDelegation] = useState('')
   const [streetAddress, setStreetAddress] = useState('')
 
+  const walletBalance = Number(user?.wallet_balance ?? 0)
+  const walletDiscount = useWallet
+    ? Math.min(walletBalance, Math.max(total - discount, 0))
+    : 0
   const shipping = total >= 200 ? 0 : 7
-  const grandTotal = total - discount + shipping
+  const grandTotal = total - discount - walletDiscount + shipping
 
   // Fire InitiateCheckout once — when items first become available
   const checkoutTracked = useRef(false)
@@ -152,6 +157,7 @@ export function Checkout() {
       shipping_address: streetAddress,
       promo_code: promo || undefined,
       payment_method: 'cash',
+      use_wallet: useWallet && walletDiscount > 0,
     }
 
     if (user && addressMode === 'saved' && selectedAddressId) {
@@ -378,6 +384,31 @@ export function Checkout() {
               </div>
             </FieldGroup>
 
+            {user && walletBalance > 0 && (
+              <FieldGroup title="Crédit boutique" icon={<Banknote size={16} />}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useWallet}
+                    onChange={(e) => setUseWallet(e.target.checked)}
+                    className="mt-1 rounded accent-brand-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Utiliser mon crédit disponible ({walletBalance.toFixed(3)} TND)
+                    {useWallet && walletDiscount > 0 && (
+                      <span className="block text-emerald-600 font-semibold mt-1">
+                        -{walletDiscount.toFixed(3)} TND appliqués à cette commande
+                      </span>
+                    )}
+                  </span>
+                </label>
+                <p className="text-xs text-gray-400">
+                  Gagnez des récompenses sur{' '}
+                  <a href="/recompenses" className="text-brand-600 font-semibold hover:underline">votre page fidélité</a>.
+                </p>
+              </FieldGroup>
+            )}
+
             <FieldGroup title="Code promotionnel" icon={<Tag size={16} />}>
               {promoApplied ? (
                 <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded-xl px-4 py-3 font-semibold text-sm">
@@ -426,8 +457,14 @@ export function Checkout() {
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-emerald-600">
-                    <span>Réduction</span>
+                    <span>Réduction promo</span>
                     <span className="font-bold">-{discount.toFixed(3)} TND</span>
+                  </div>
+                )}
+                {walletDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Crédit boutique</span>
+                    <span className="font-bold">-{walletDiscount.toFixed(3)} TND</span>
                   </div>
                 )}
                 <div className="flex justify-between">

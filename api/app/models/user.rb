@@ -9,6 +9,7 @@ class User < ApplicationRecord
   has_many :addresses, dependent: :destroy
   has_many :orders, dependent: :nullify
   has_many :activity_logs, dependent: :nullify
+  has_many :promo_codes, dependent: :destroy
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :name, presence: true

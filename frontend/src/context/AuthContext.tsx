@@ -9,6 +9,8 @@ export type User = {
   phone?: string;
   role: string;
   fidelity_points: number;
+  wallet_balance?: number;
+  loyalty_spend_progress?: number;
 };
 
 type AuthContextType = {
