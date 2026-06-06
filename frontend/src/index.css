@@ -56,6 +56,10 @@
     font-weight: 600;
   }
 
+  html.no-lcp-shell #lcp-shell {
+    display: none !important;
+  }
+
   #lcp-shell {
     position: fixed;
     inset: 0;

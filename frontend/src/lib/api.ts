@@ -56,6 +56,13 @@ export function peekCacheV1<T>(path: string): T | null {
   return peekCache(`${API_V1}${path}`) as T | null;
 }
 
+/** Synchronous read only when cache is still fresh (avoids stale hero / carousel flashes). */
+export function peekFreshCacheV1<T>(path: string): T | null {
+  const entry = cacheEntry(`${API_V1}${path}`);
+  if (entry && isFresh(entry)) return entry.data as T;
+  return null;
+}
+
 export function peekCacheAdmin<T>(path: string): T | null {
   return peekCache(`${API_ADMIN}${path}`) as T | null;
 }
@@ -159,6 +166,15 @@ function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 /* ── Public helpers ─────────────────────────────────────────────────── */
 export function apiV1<T>(path: string, options?: RequestInit) {
   return request<T>(`${API_V1}${path}`, options);
+}
+
+/** Always hits the network — use when UI must reflect latest server config (e.g. homepage hero). */
+export function apiV1Fresh<T>(path: string, options?: RequestInit) {
+  const url = `${API_V1}${path}`;
+  return fetchJson<T>(url, options ?? {}).then((data) => {
+    cacheSet(url, data);
+    return data;
+  });
 }
 
 export function apiAdmin<T>(path: string, options?: RequestInit) {

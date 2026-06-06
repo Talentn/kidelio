@@ -11,7 +11,8 @@ ReactDOM.createRoot(root).render(
   </React.StrictMode>
 )
 
-// Static LCP shell in index.html — remove after React paints the real hero
-requestAnimationFrame(() => {
+// LCP shell is home-only; admin and other routes hide it immediately (see index.html)
+const isHome = window.location.pathname === '/' || window.location.pathname === ''
+if (!isHome) {
   document.getElementById('lcp-shell')?.remove()
-})
+}

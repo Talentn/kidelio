@@ -1,10 +1,11 @@
-# Loyalty: spend 300 TND (subtotal, excl. delivery) → claim 10 000 pts (= 10 TND)
+# Loyalty: spend 300 TND (subtotal, excl. delivery) on delivered orders → claim 10 000 pts (= 10 TND)
 # Reward: 10% off coupon OR 10 TND store credit
 module LoyaltyProgram
   SPEND_THRESHOLD = 300.to_d
   REWARD_POINTS = 10_000
   REWARD_WALLET_TND = 10.to_d
   COUPON_PERCENT = 10.to_d
+  COUNTED_STATUS = "delivered"
 
   module_function
 
@@ -26,6 +27,7 @@ module LoyaltyProgram
   def record_order!(order)
     user = order.user
     return unless user
+    return unless order.status == COUNTED_STATUS
     return if order.loyalty_counted?
 
     user.with_lock do

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { Gift, Star, Wallet, Ticket, Loader2, CheckCircle } from 'lucide-react'
-import { api } from '../api/client'
+import { api, invalidateCache } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { broadcast } from '../lib/broadcast'
 import { SEO } from '../components/SEO'
 
 type RewardsData = {
@@ -54,7 +55,9 @@ export function Rewards() {
       if (res.reward.type === 'coupon' && res.reward.code) {
         setClaimedCode(res.reward.code)
       }
+      invalidateCache('/api/v1/auth')
       await refresh()
+      broadcast({ type: 'auth', action: 'refresh' })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur lors de la réclamation')
     } finally {
@@ -73,7 +76,7 @@ export function Rewards() {
       <div className="mb-8">
         <h1 className="font-display font-semibold text-2xl md:text-3xl text-ink mb-2">Mes récompenses</h1>
         <p className="text-gray-500 text-sm">
-          Dépensez {data?.spend_threshold ?? 300} TND en achats (hors livraison) pour débloquer{' '}
+          Dépensez {data?.spend_threshold ?? 300} TND en achats livrés (hors livraison) pour débloquer{' '}
           {data?.reward_points?.toLocaleString('fr-FR') ?? '10 000'} points = {data?.reward_value_tnd ?? 10} TND
         </p>
       </div>
@@ -92,7 +95,7 @@ export function Rewards() {
               </div>
               <div>
                 <p className="font-bold text-gray-900">Progression</p>
-                <p className="text-sm text-gray-500">Achats comptabilisés hors livraison</p>
+                <p className="text-sm text-gray-500">Commandes livrées uniquement, hors frais de livraison</p>
               </div>
             </div>
 
@@ -114,8 +117,9 @@ export function Rewards() {
 
             <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-xs text-gray-500 font-semibold mb-1">Points cumulés</p>
+                <p className="text-xs text-gray-500 font-semibold mb-1">Points de fidélité</p>
                 <p className="text-xl font-bold text-gray-900">{data.fidelity_points.toLocaleString('fr-FR')}</p>
+                <p className="text-[11px] text-gray-400 mt-1">Attribués après chaque récompense réclamée</p>
               </div>
               <div className="bg-gray-50 rounded-2xl p-4">
                 <p className="text-xs text-gray-500 font-semibold mb-1">Crédit boutique</p>

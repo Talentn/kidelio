@@ -82,10 +82,7 @@ class OrderCreator
         PromoCode.find_by(code: promo_code_str)&.increment!(:used_count)
       end
 
-      if @user
-        @user.decrement!(:wallet_balance, wallet_used) if wallet_used.positive?
-        LoyaltyProgram.record_order!(order)
-      end
+      @user.decrement!(:wallet_balance, wallet_used) if @user && wallet_used.positive?
 
       order
     end

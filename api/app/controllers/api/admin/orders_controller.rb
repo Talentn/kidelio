@@ -35,10 +35,13 @@ module Api
 
         cancelled = %w[cancelled refunded]
         if cancelled.include?(order.status) && cancelled.exclude?(previous_status)
-          LoyaltyProgram.reverse_order!(order)
           refund_wallet!(order) if order.wallet_amount.to_d.positive?
-        elsif cancelled.include?(previous_status) && cancelled.exclude?(order.status)
-          LoyaltyProgram.record_order!(order) unless order.loyalty_counted?
+        end
+
+        if order.status == LoyaltyProgram::COUNTED_STATUS && previous_status != LoyaltyProgram::COUNTED_STATUS
+          LoyaltyProgram.record_order!(order)
+        elsif previous_status == LoyaltyProgram::COUNTED_STATUS && order.status != LoyaltyProgram::COUNTED_STATUS
+          LoyaltyProgram.reverse_order!(order)
         end
       end
 

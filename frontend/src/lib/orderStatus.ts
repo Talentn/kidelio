@@ -35,8 +35,29 @@ export const ORDER_STATUS_STYLES: Record<string, string> = {
   refunded: 'bg-gray-100 text-gray-600',
 }
 
+/** Colored borders for admin status dropdowns */
+export const ORDER_STATUS_SELECT_STYLES: Record<string, string> = {
+  pending: 'bg-amber-50 border-amber-300 text-amber-800',
+  confirmed: 'bg-sky-50 border-sky-300 text-sky-800',
+  processing: 'bg-blue-50 border-blue-300 text-blue-800',
+  shipped: 'bg-purple-50 border-purple-300 text-purple-800',
+  out_for_delivery: 'bg-indigo-50 border-indigo-300 text-indigo-800',
+  delivered: 'bg-emerald-50 border-emerald-400 text-emerald-800',
+  cancelled: 'bg-red-50 border-red-300 text-red-800',
+  refunded: 'bg-slate-100 border-slate-300 text-slate-600',
+}
+
 export function orderStatusLabel(status: string): string {
   return ORDER_STATUS_LABELS[status] ?? 'Statut inconnu'
+}
+
+export function orderStatusStyle(status: string): string {
+  return ORDER_STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-600'
+}
+
+export function orderStatusSelectClass(status: string): string {
+  const colors = ORDER_STATUS_SELECT_STYLES[status] ?? 'bg-slate-50 border-slate-200 text-slate-700'
+  return `border rounded-lg px-2 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-brand-300 outline-none min-w-[9.5rem] ${colors}`
 }
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Eye, ShoppingCart, Phone, MapPin, User as UserIcon } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
-import { ORDER_STATUSES, orderStatusLabel, paymentMethodLabel } from "../../lib/orderStatus";
+import { ORDER_STATUSES, orderStatusLabel, orderStatusSelectClass, paymentMethodLabel } from "../../lib/orderStatus";
 import { useLivePoll } from "../../hooks/useLivePoll";
 import { AdminPage, Card, Modal, StatusBadge, useToast } from "../../components/admin/ui";
 
@@ -69,7 +69,7 @@ function OrderDetail({ id, onClose, onStatusChange }: { id: number; onClose: () 
               value={order.status}
               disabled={updating}
               onChange={(e) => updateStatus(e.target.value)}
-              className="input py-2 w-auto text-sm"
+              className={`py-2 w-auto text-sm font-semibold ${orderStatusSelectClass(order.status)}`}
             >
               {ORDER_STATUSES.map((s) => <option key={s} value={s}>{orderStatusLabel(s)}</option>)}
             </select>
@@ -231,7 +231,7 @@ export function AdminOrders() {
                         value={o.status}
                         disabled={updatingId === o.id}
                         onChange={(e) => updateStatusInline(o, e.target.value)}
-                        className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold bg-white focus:ring-2 focus:ring-brand-300 outline-none min-w-[9.5rem]"
+                        className={orderStatusSelectClass(o.status)}
                         aria-label={`Statut commande ${o.order_number}`}
                       >
                         {ORDER_STATUSES.map((s) => (

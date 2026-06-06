@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Banknote, RefreshCw, ShieldCheck, Truck } from 'lucide-react'
-import { api, peekCacheV1 } from '../api/client'
+import { api, apiV1Fresh, peekCacheV1, peekFreshCacheV1 } from '../api/client'
 import { SEO } from '../components/SEO'
 import { HeroCarousel, type HeroSlide } from '../components/home/HeroCarousel'
 import { FallbackHero } from '../components/home/FallbackHero'
@@ -21,12 +21,21 @@ const DEFAULT_ASSETS = {
   banner_toys: '/banner-toys.png',
 }
 
+const LCP_HERO_KEY = 'kidelio_lcp_hero'
+
 type HomeAssets = Record<string, string | null | undefined>
 
+function resolveHeroImage(sliders: HeroSlide[], assets: HomeAssets): string {
+  const slideImage = sliders.find((s) => s.image_url)?.image_url
+  if (slideImage) return slideImage
+  return assets.hero_fallback || DEFAULT_ASSETS.hero_fallback
+}
+
 export function Home() {
-  const cachedHome = peekCacheV1<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage')
+  const cachedHome = peekFreshCacheV1<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage')
   const [sliders, setSliders] = useState<HeroSlide[]>(() => cachedHome?.sliders ?? [])
   const [assets, setAssets] = useState<HomeAssets>(() => cachedHome?.assets ?? {})
+  const [homeHeroReady, setHomeHeroReady] = useState(() => Boolean(cachedHome))
   const [categories, setCategories] = useState<ShopCategory[]>(
     () => peekCacheV1<{ categories: ShopCategory[] }>('/categories')?.categories ?? []
   )
@@ -44,26 +53,26 @@ export function Home() {
   )
 
   useEffect(() => {
-    const firstHero = sliders.find((s) => s.image_url)?.image_url
-    if (firstHero) {
-      const link = document.querySelector<HTMLLinkElement>('link[data-lcp-hero]')
-      if (link) {
-        link.href = firstHero
-      } else {
-        const preload = document.createElement('link')
-        preload.rel = 'preload'
-        preload.as = 'image'
-        preload.href = firstHero
-        preload.setAttribute('fetchpriority', 'high')
-        preload.dataset.lcpHero = 'true'
-        document.head.appendChild(preload)
-      }
+    const heroImage = resolveHeroImage(sliders, assets)
+    try {
+      sessionStorage.setItem(LCP_HERO_KEY, heroImage)
+    } catch {
+      /* private browsing */
     }
-  }, [sliders])
+    const link = document.querySelector<HTMLLinkElement>('link[data-lcp-hero]')
+    if (link) link.href = heroImage
+  }, [sliders, assets])
+
+  useEffect(() => {
+    if (!homeHeroReady) return
+    requestAnimationFrame(() => {
+      document.getElementById('lcp-shell')?.remove()
+    })
+  }, [homeHeroReady])
 
   useEffect(() => {
     Promise.all([
-      api<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage'),
+      apiV1Fresh<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage'),
       api<{ categories: ShopCategory[] }>('/categories'),
       api<{ products: HomeProduct[] }>('/products'),
       api<{ products: HomeProduct[] }>('/products?on_promo=true'),
@@ -76,14 +85,16 @@ export function Home() {
         setNewIn(all.products.slice(0, SLICE))
         setPromos(promo.products.slice(0, SLICE))
         setFeatured(feat.products.slice(0, SLICE))
+        setHomeHeroReady(true)
       })
+      .catch(() => setHomeHeroReady(true))
       .finally(() => setLoading(false))
   }, [])
 
   const img = (key: keyof typeof DEFAULT_ASSETS) =>
     assets[key] || DEFAULT_ASSETS[key]
 
-  const slidesWithImage = sliders.filter((s) => s.image_url || s.title)
+  const slidesWithImage = sliders.filter((s) => Boolean(s.image_url))
 
   const jsonLd = [
     {
@@ -118,7 +129,9 @@ export function Home() {
       <SEO url="/" jsonLd={jsonLd} />
       {/* Fixed-height hero wrapper — prevents AgeShopRail CLS when hero switches */}
       <div className="min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
-        {slidesWithImage.length > 0 ? (
+        {!homeHeroReady ? (
+          <div className="w-full h-full min-h-[inherit] bg-[#FDF8F5]" aria-hidden="true" />
+        ) : slidesWithImage.length > 0 ? (
           <HeroCarousel slides={slidesWithImage} />
         ) : (
           <FallbackHero heroImage={img('hero_fallback')} />
