@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search, SlidersHorizontal, X, SearchX } from 'lucide-react'
-import { api } from '../api/client'
+import { api, peekCacheV1 } from '../api/client'
 import { ProductCard } from '../components/home/ProductCard'
 import type { HomeProduct } from '../components/home/ProductCard'
 

@@ -3,16 +3,18 @@
 ## Architecture
 
 ```
-Internet → nginx (443) → Rails :7675  (SPA + /api)
-                       → Go     :3010  (/go → chat, cart, favorites)
+Internet → daizo-nginx (Docker, :443) → 172.17.0.1:7675  Rails (SPA + /api)
+                                        → 172.17.0.1:3010  Go (/go → chat, cart, favorites)
 ```
 
-Both containers bind to **localhost only** — nginx is the only public entry point.
+**Important:** If nginx runs inside Docker (`daizo-nginx`), it reaches the host via the
+Docker bridge IP `172.17.0.1`. Ports in `docker-compose.prod.yml` must **not** be bound
+to `127.0.0.1` only — use `7675:3000` and `3010:3010` so they listen on all interfaces.
 
 | Service | Container | Host port | Public path |
 |---------|-----------|-----------|-------------|
-| Rails (Thruster) | `web` | `127.0.0.1:7675` | `/`, `/api/` |
-| Go microservice | `go-service` | `127.0.0.1:3010` | `/go/` |
+| Rails | `web` | `7675` → container `3000` | `/`, `/api/` |
+| Go | `go-service` | `3010` | `/go/` |
 
 ## One-time VPS setup
 
@@ -85,6 +87,31 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## Troubleshooting
+
+### 504 Gateway Timeout (daizo-nginx)
+
+If nginx runs in the **daizo-nginx** container, it proxies to `http://172.17.0.1:7675`.
+That fails when compose binds ports to localhost only:
+
+```yaml
+# BAD — daizo-nginx cannot reach this
+ports:
+  - "127.0.0.1:7675:3000"
+
+# GOOD — reachable via Docker bridge
+ports:
+  - "7675:3000"
+  - "3010:3010"
+```
+
+Verify from inside daizo-nginx:
+
+```bash
+docker exec daizo-nginx curl -s http://172.17.0.1:7675/up
+docker exec daizo-nginx curl -s http://172.17.0.1:3010/health
+```
+
+Ensure daizo-nginx also proxies `/go/` to `http://172.17.0.1:3010`.
 
 ### `deploy-web-1 is unhealthy`
 
