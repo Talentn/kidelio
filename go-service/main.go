@@ -25,8 +25,9 @@ func main() {
 	// ── Chat ─────────────────────────────────────────────────────────────────
 	// Customer: start a chat room (rate-limited)
 	mux.HandleFunc("POST /chat/rooms", middleware.RateLimit(10, time.Minute, handlers.CreateRoom))
-	// Customer: get message history
+	// Customer: get message history / send via HTTP when WebSocket unavailable
 	mux.HandleFunc("GET /chat/rooms/{id}/messages", handlers.GetMessages)
+	mux.HandleFunc("POST /chat/rooms/{id}/messages", middleware.RateLimit(60, time.Minute, handlers.CustomerSendMessage))
 	// Customer: WebSocket
 	mux.HandleFunc("GET /chat/ws/{id}", handlers.CustomerWS)
 

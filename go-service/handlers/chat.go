@@ -81,6 +81,29 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"room_id": room.ID})
 }
 
+// deliverCustomerMessage saves a user message and broadcasts it to the room + agents.
+func deliverCustomerMessage(roomID, content string) (*store.Message, error) {
+	room, err := store.GetRoom(roomID)
+	if err != nil || room.Status == "closed" {
+		return nil, err
+	}
+	m := &store.Message{
+		ID:         uuid.NewString(),
+		RoomID:     roomID,
+		SenderType: "user",
+		SenderName: room.UserName,
+		Content:    content,
+		CreatedAt:  time.Now(),
+	}
+	if err := store.SaveMessage(m); err != nil {
+		return nil, err
+	}
+	payload := map[string]any{"type": "message", "room_id": roomID, "message": m}
+	hub.Chat.BroadcastToRoom(roomID, payload)
+	hub.Chat.BroadcastToAgents(payload)
+	return m, nil
+}
+
 // ── GET /chat/rooms/:id/messages ──────────────────────────────────────────────
 
 func GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +118,26 @@ func GetMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"messages": msgs})
+}
+
+// ── POST /chat/rooms/:id/messages — customer sends via HTTP (WS fallback) ───
+
+func CustomerSendMessage(w http.ResponseWriter, r *http.Request) {
+	roomID := r.PathValue("id")
+	var body struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Content == "" {
+		http.Error(w, `{"error":"content required"}`, http.StatusBadRequest)
+		return
+	}
+	m, err := deliverCustomerMessage(roomID, body.Content)
+	if err != nil {
+		http.Error(w, `{"error":"room not found"}`, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"message": m})
 }
 
 // ── WS /chat/ws/:id — customer WebSocket ──────────────────────────────────────
@@ -146,20 +189,9 @@ func CustomerWS(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(raw, &msg); err != nil || msg.Content == "" {
 			continue
 		}
-
-		m := &store.Message{
-			ID:         uuid.NewString(),
-			RoomID:     roomID,
-			SenderType: "user",
-			SenderName: room.UserName,
-			Content:    msg.Content,
-			CreatedAt:  time.Now(),
+		if _, err := deliverCustomerMessage(roomID, msg.Content); err != nil {
+			break
 		}
-		_ = store.SaveMessage(m)
-		payload := map[string]any{"type": "message", "room_id": roomID, "message": m}
-		hub.Chat.BroadcastToRoom(roomID, payload)
-		// Also notify all agents (even before they join the room)
-		hub.Chat.BroadcastToAgents(payload)
 	}
 }
 

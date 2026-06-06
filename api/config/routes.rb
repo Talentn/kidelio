@@ -9,6 +9,7 @@ Rails.application.routes.draw do
       # Go service REST — explicit routes (shared nginx steals /api/v1/realtime, /go, etc.)
       post "chat/rooms", to: "go_proxy#create_chat_room"
       get "chat/rooms/:room_id/messages", to: "go_proxy#chat_room_messages"
+      post "chat/rooms/:room_id/messages", to: "go_proxy#chat_room_send_message"
       get "chat/admin/queue", to: "go_proxy#chat_admin_queue"
       post "chat/admin/rooms/:room_id/join", to: "go_proxy#chat_admin_join"
       post "chat/admin/rooms/:room_id/messages", to: "go_proxy#chat_admin_message"

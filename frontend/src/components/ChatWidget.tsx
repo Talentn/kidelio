@@ -11,6 +11,13 @@ type Msg = {
   created_at: string
 }
 
+function mergeMsgs(prev: Msg[], incoming: Msg[]) {
+  if (!incoming.length) return prev
+  const seen = new Set(prev.map(m => m.id))
+  const added = incoming.filter(m => !seen.has(m.id))
+  return added.length ? [...prev, ...added] : prev
+}
+
 export function ChatWidget() {
   const { user } = useAuth()
   const [open, setOpen]       = useState(false)
@@ -22,7 +29,7 @@ export function ChatWidget() {
   const [startError, setStartError] = useState('')
   const [msgs, setMsgs]       = useState<Msg[]>([])
   const [input, setInput]     = useState('')
-  const [connected, setConnected] = useState(false)
+  const [wsLive, setWsLive] = useState(false)
   const [position, setPosition]   = useState<number | null>(null)
   const wsRef    = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -33,37 +40,43 @@ export function ChatWidget() {
     if (saved) { setRoomId(saved); setStep('chat') }
   }, [])
 
-  // Load message history when we have a room
-  useEffect(() => {
-    if (!roomId) return
-    goGet<{ messages: Msg[] }>(`/chat/rooms/${roomId}/messages`)
-      .then(data => { if (data.messages?.length) setMsgs(data.messages) })
+  const refreshMessages = (room: string) =>
+    goGet<{ messages: Msg[] }>(`/chat/rooms/${room}/messages`)
+      .then(data => {
+        if (data.messages?.length) setMsgs(data.messages)
+      })
       .catch(() => {})
-  }, [roomId])
 
-  // Connect WebSocket when we have a roomId
+  // Load history + poll when WebSocket is unavailable (shared nginx blocks WS upgrade)
+  useEffect(() => {
+    if (!roomId || step !== 'chat') return
+    refreshMessages(roomId)
+    if (wsLive) return
+    const id = setInterval(() => refreshMessages(roomId), 2500)
+    return () => clearInterval(id)
+  }, [roomId, step, wsLive])
+
+  // Try WebSocket for live updates; HTTP polling is the fallback
   useEffect(() => {
     if (!roomId) return
+    setWsLive(false)
     const ws = new WebSocket(goWsUrl(`/chat/ws/${roomId}`))
     wsRef.current = ws
 
-    ws.onopen = () => setConnected(true)
-    ws.onclose = () => setConnected(false)
+    ws.onopen = () => setWsLive(true)
+    ws.onclose = () => setWsLive(false)
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'history') {
         setMsgs(data.messages || [])
       } else if (data.type === 'message') {
-        setMsgs(prev => {
-          if (prev.some(m => m.id === data.message.id)) return prev
-          return [...prev, data.message]
-        })
+        setMsgs(prev => mergeMsgs(prev, [data.message]))
       } else if (data.type === 'agent_joined') {
         setPosition(null)
       } else if (data.type === 'queue_position') {
         setPosition(data.position)
       } else if (data.type === 'room_closed') {
-        setMsgs(prev => [...prev, data.message])
+        setMsgs(prev => mergeMsgs(prev, [data.message]))
         setPosition(null)
         sessionStorage.removeItem('chat_room_id')
         wsRef.current?.close()
@@ -99,10 +112,23 @@ export function ChatWidget() {
     }
   }
 
-  const send = () => {
-    if (!input.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-    wsRef.current.send(JSON.stringify({ type: 'message', content: input.trim() }))
-    setInput('')
+  const send = async () => {
+    const content = input.trim()
+    if (!content || !roomId) return
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'message', content }))
+      setInput('')
+      return
+    }
+
+    try {
+      const data = await goPost<{ message: Msg }>(`/chat/rooms/${roomId}/messages`, { content })
+      setMsgs(prev => mergeMsgs(prev, [data.message]))
+      setInput('')
+    } catch {
+      // keep input so the user can retry
+    }
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -132,7 +158,7 @@ export function ChatWidget() {
               <p className="font-bold text-sm">Support Kidelio 🐰</p>
               <p className="text-[11px] text-white/80">
                 {step === 'form' ? 'Généralement répond en quelques minutes' :
-                  connected ? (position ? `File d'attente : #${position}` : '✓ Connecté') : 'Connexion...'}
+                  position ? `File d'attente : #${position}` : '✓ Connecté'}
               </p>
             </div>
             <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white">
@@ -213,7 +239,7 @@ export function ChatWidget() {
                 <button
                   type="button"
                   onClick={send}
-                  disabled={!input.trim() || !connected}
+                  disabled={!input.trim() || !roomId}
                   className="w-9 h-9 bg-brand-500 text-white rounded-xl flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors"
                 >
                   <Send size={14} />

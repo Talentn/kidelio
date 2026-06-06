@@ -10,6 +10,10 @@ module Api
         relay("/chat/rooms/#{params[:room_id]}/messages")
       end
 
+      def chat_room_send_message
+        relay("/chat/rooms/#{params[:room_id]}/messages")
+      end
+
       def chat_admin_queue
         relay("/chat/admin/queue")
       end
