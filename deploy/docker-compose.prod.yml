@@ -25,6 +25,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3010:3010"   # must be reachable from daizo-nginx via 172.17.0.1:3010
+    env_file: .env.production
     environment:
       - PORT=3010
       - GO_ENV=production

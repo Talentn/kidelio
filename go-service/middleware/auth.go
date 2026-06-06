@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type RailsUser struct {
@@ -50,9 +51,45 @@ func IsStaff(user *RailsUser) bool {
 	return user != nil && (user.Role == "admin" || user.Role == "employee")
 }
 
+func internalSecret() string {
+	if s := os.Getenv("GO_INTERNAL_SECRET"); s != "" {
+		return s
+	}
+	if os.Getenv("GO_ENV") != "production" {
+		return "dev-internal"
+	}
+	return ""
+}
+
+// staffFromInternal trusts staff identity forwarded by Rails after session check.
+func staffFromInternal(r *http.Request) *RailsUser {
+	secret := internalSecret()
+	if secret == "" || r.Header.Get("X-Kidelio-Internal") != secret {
+		return nil
+	}
+	id, err := strconv.ParseInt(r.Header.Get("X-Kidelio-User-Id"), 10, 64)
+	if err != nil || id == 0 {
+		return nil
+	}
+	role := r.Header.Get("X-Kidelio-User-Role")
+	if role != "admin" && role != "employee" {
+		return nil
+	}
+	return &RailsUser{
+		ID:    id,
+		Name:  r.Header.Get("X-Kidelio-User-Name"),
+		Email: "",
+		Role:  role,
+	}
+}
+
 // ValidateSession forwards the incoming Cookie header to Rails and returns the
 // authenticated user, or nil + error if not authenticated.
 func ValidateSession(r *http.Request) (*RailsUser, error) {
+	if user := staffFromInternal(r); user != nil {
+		return user, nil
+	}
+
 	req, _ := http.NewRequest("GET", railsURL()+"/api/v1/auth/me", nil)
 	req.Header.Set("Cookie", r.Header.Get("Cookie"))
 	req.Header.Set("Accept", "application/json")

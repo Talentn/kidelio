@@ -51,6 +51,11 @@ if grep -qE '^SECRET_KEY_BASE=$' "$DEPLOY_DIR/.env.production"; then
   echo "==> Removing empty SECRET_KEY_BASE= (use credentials via RAILS_MASTER_KEY instead)"
   sed -i '/^SECRET_KEY_BASE=$/d' "$DEPLOY_DIR/.env.production"
 fi
+# Rails proxies admin chat to Go with trusted staff headers — needs a shared secret.
+if ! grep -qE '^GO_INTERNAL_SECRET=.+$' "$DEPLOY_DIR/.env.production"; then
+  echo "==> Generating GO_INTERNAL_SECRET for Rails→Go internal auth"
+  echo "GO_INTERNAL_SECRET=$(openssl rand -hex 32)" >> "$DEPLOY_DIR/.env.production"
+fi
 
 # ── 3. Install frontend deps ─────────────────────────────────────────────────
 echo "==> Installing frontend dependencies..."
