@@ -6,8 +6,8 @@ Rails.application.routes.draw do
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
     namespace :v1 do
-      # Go service (chat, live cart/favorites) — must live under /api/v1/ on shared nginx
-      mount GoServiceProxy.new => "/live"
+      # Go service (chat, cart/favorites) — /api/v1/live is reserved by shared daizo-nginx
+      mount GoServiceProxy.new => "/realtime"
 
       get "config", to: "config#show"
       get "auth/me", to: "auth#me"

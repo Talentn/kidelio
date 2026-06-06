@@ -1,5 +1,5 @@
-// Go service — proxied via Rails at /api/v1/live (shared nginx only forwards /api/v1/* to Kidelio)
-const GO_BASE = '/api/v1/live'
+// Go service — proxied via Rails at /api/v1/realtime (/api/v1/live is reserved on shared nginx)
+const GO_BASE = '/api/v1/realtime'
 
 export function goUrl(path: string) {
   return `${GO_BASE}${path}`
@@ -7,7 +7,7 @@ export function goUrl(path: string) {
 
 export function goWsUrl(path: string) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${proto}://${location.host}/api/v1/live${path}`
+  return `${proto}://${location.host}/api/v1/realtime${path}`
 }
 
 export async function goPost<T>(path: string, body: unknown): Promise<T> {

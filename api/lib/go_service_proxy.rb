@@ -1,5 +1,5 @@
-# Proxies /api/v1/live/* to the Go service (chat, cart events, favorites).
-# Must be under /api/v1/ — shared daizo-nginx only routes that prefix to Kidelio Rails.
+# Proxies /api/v1/realtime/* to the Go service (chat, cart events, favorites).
+# Do not use /api/v1/live — shared daizo-nginx reserves "live" for another app (Next.js).
 require "rack/proxy"
 
 class GoServiceProxy < Rack::Proxy
