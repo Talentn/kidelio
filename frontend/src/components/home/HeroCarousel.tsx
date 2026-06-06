@@ -27,34 +27,43 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
     return () => window.clearInterval(id)
   }, [slides.length])
 
+  // Preload the next slide image without blocking LCP
+  useEffect(() => {
+    const next = slides[(index + 1) % slides.length]
+    if (!next?.image_url) return
+    const img = new Image()
+    img.src = next.image_url
+  }, [index, slides])
+
   const slide = slides[index]
   const href = slideLink(slide.link_url)
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#FDF8F5]">
+    <section className="relative w-full overflow-hidden bg-[#FDF8F5]" aria-roledescription="carousel" aria-label="Bannière principale">
       <div className="relative min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
-        {slides.map((s, i) => (
-          <div
-            key={s.id}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === index ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          >
-            {s.image_url ? (
-              <img
-                src={s.image_url}
-                alt={s.title || 'Kidelio'}
-                className="w-full h-full object-cover object-center"
-                loading={i === 0 ? 'eager' : 'lazy'}
-                fetchPriority={i === 0 ? 'high' : 'low'}
-                decoding={i === 0 ? 'sync' : 'async'}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-brand-100 to-sage-100" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
-          </div>
-        ))}
+        {slides.map((s, i) => {
+          const isActive = i === index
+          if (!isActive) return null
+          return (
+            <div key={s.id} className="absolute inset-0 z-10">
+              {s.image_url ? (
+                <img
+                  src={s.image_url}
+                  alt={s.title || 'Kidelio — Mode enfants'}
+                  className="w-full h-full object-cover object-center"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="sync"
+                  width={1920}
+                  height={1080}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-brand-100 to-sage-100" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
+            </div>
+          )
+        })}
 
         <div className="relative z-20 page-wrap h-full min-h-[inherit] flex flex-col justify-center py-12 md:py-16">
           <span className="inline-flex text-brand-100 bg-white/15 backdrop-blur-sm text-xs font-bold px-3 py-1.5 rounded-full mb-4 w-fit">

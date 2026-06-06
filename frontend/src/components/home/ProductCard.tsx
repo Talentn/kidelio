@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart, Heart, Check } from 'lucide-react'
 import { prefetchV1 } from '../../api/client'
 import { useCart } from '../../context/CartContext'
-import { useFavoriteTracker } from '../../hooks/useFavoriteTracker'
+import { useFavorites } from '../../context/FavoritesContext'
 
 export type HomeProduct = {
   id: number
@@ -20,26 +20,10 @@ export type HomeProduct = {
   has_variants?: boolean
 }
 
-function useFavorites() {
-  const key = 'kidelio_favs'
-  const [favs, setFavs] = useState<number[]>(() => {
-    try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
-  })
-  const toggle = (id: number) => {
-    setFavs(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      localStorage.setItem(key, JSON.stringify(next))
-      return next
-    })
-  }
-  return { favs, toggle }
-}
-
 export function ProductCard({ p }: { p: HomeProduct }) {
   const { addItem } = useCart()
   const navigate = useNavigate()
-  const { favs, toggle } = useFavorites()
-  const { track: trackFavorite } = useFavoriteTracker()
+  const { isFavorite, toggle } = useFavorites()
 
   const [added, setAdded] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -48,7 +32,7 @@ export function ProductCard({ p }: { p: HomeProduct }) {
     ? Math.round((1 - Number(p.promo_price) / Number(p.price)) * 100)
     : 0
 
-  const isFav = favs.includes(p.id)
+  const isFav = isFavorite(p.id)
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -72,9 +56,7 @@ export function ProductCard({ p }: { p: HomeProduct }) {
   const handleFav = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const adding = !isFav
-    toggle(p.id)
-    trackFavorite(adding ? 'add' : 'remove', p.id, p.name)
+    toggle(p.id, p.name)
   }
 
   return (

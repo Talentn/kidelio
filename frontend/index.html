@@ -40,6 +40,9 @@
     <meta name="twitter:description" content="La boutique en ligne dédiée aux bébés et enfants en Tunisie. Livraison rapide, paiement à la livraison." />
     <meta name="twitter:image" content="https://kideliowear.com/kidelio-logo.png" />
 
+    <!-- LCP hero — discoverable before JS (hidden once React mounts) -->
+    <link rel="preload" as="image" href="/hero-kids.png" fetchpriority="high" />
+
     <!-- DNS prefetch for API / CDN -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
@@ -59,6 +62,17 @@
     </noscript>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Aller au contenu principal</a>
+    <div id="lcp-shell" aria-hidden="true">
+      <img
+        src="/hero-kids.png"
+        alt=""
+        width="1920"
+        height="1080"
+        fetchpriority="high"
+        decoding="sync"
+      />
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>

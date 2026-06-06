@@ -15,14 +15,16 @@ export default defineConfig({
   build: {
     outDir: 'build',
     emptyOutDir: true,
-    // Target modern browsers for smaller output
     target: 'es2020',
-    // Warn when chunks > 500 KB
+    cssCodeSplit: true,
+    modulePreload: { polyfill: false },
     chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Vendor — cached indefinitely (content-hashed)
+          if (id.includes('/pages/admin/') || id.includes('/components/admin/')) {
+            return 'admin'
+          }
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) {
             return 'vendor-react'
           }
@@ -32,8 +34,6 @@ export default defineConfig({
           if (id.includes('node_modules/lucide-react')) {
             return 'vendor-icons'
           }
-          // Pixel init stays in the main chunk (imported by eager components).
-          // Pixel events go into page-component chunks (imported only by lazy pages).
         },
       },
     },

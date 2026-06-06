@@ -52,6 +52,8 @@ export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: str
             loading="eager"
             fetchPriority="high"
             decoding="sync"
+            width={1920}
+            height={1080}
           />
           <div className="hidden md:block absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#FDF8F5] to-transparent pointer-events-none" />
           <div className="hidden md:flex absolute bottom-8 left-8 bg-white rounded-2xl shadow-lg px-4 py-3 items-center gap-3">

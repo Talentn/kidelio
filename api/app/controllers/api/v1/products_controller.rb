@@ -2,7 +2,7 @@ module Api
   module V1
     class ProductsController < BaseController
       def index
-        cache_key = params.slice(:category, :featured, :on_promo, :q, :age).to_json
+        cache_key = params.slice(:category, :featured, :on_promo, :q, :age, :ids).to_json
         data = cache_response("products/index/#{cache_key}") do
           scope = Product.active.includes(:category, images_attachments: :blob,
                                           colors: { images_attachments: :blob })
@@ -26,6 +26,10 @@ module Api
               "name LIKE ? OR description LIKE ? OR slug LIKE ?",
               q, q, q
             )
+          end
+          if params[:ids].present?
+            ids = params[:ids].to_s.split(",").map(&:to_i).select(&:positive?).uniq.first(100)
+            scope = scope.where(id: ids) if ids.any?
           end
           scope.order(created_at: :desc).map { |p| product_json(p) }
         end

@@ -1,6 +1,8 @@
-# Kids Shop
+# Kidelio (kids-shop)
 
-**Rails backend** + **React frontend only**.
+**Rails backend** + **React frontend** + **Go real-time service**.
+
+📖 **Full architecture guide:** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
 
 ## Run
 
@@ -28,6 +30,8 @@ npm run dev
 React talks to Rails via **JSON REST** + **session cookies** (proxied in dev).
 
 Cart lives on the **server** (`CartManager` + `/api/v1/cart`), not in `localStorage`.
+
+**Favorites** are stored in a **browser cookie** (`kidelio_favs`) — no login required. Page: `/favoris`.
 
 ## Production
 

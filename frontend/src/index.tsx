@@ -3,8 +3,15 @@ import ReactDOM from 'react-dom/client'
 import './index.css'
 import App from './App'
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+const root = document.getElementById('root') as HTMLElement
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 )
+
+// Static LCP shell in index.html — remove after React paints the real hero
+requestAnimationFrame(() => {
+  document.getElementById('lcp-shell')?.remove()
+})

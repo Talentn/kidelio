@@ -3,21 +3,19 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { FavoritesProvider } from "./context/FavoritesContext";
 import { StoreProvider } from "./context/StoreContext";
 import { UIProvider } from "./context/UIContext";
-import { CookieConsent } from "./components/CookieConsent";
-import { MetaPixel } from "./components/MetaPixel";
 import { Layout } from "./components/Layout";
-import { ChatWidget } from "./components/ChatWidget";
+import { DeferredWidgets } from "./components/DeferredWidgets";
 import { CartToastProvider } from "./context/CartToastContext";
+import { Home } from "./pages/Home";
 
 // Deferred — not needed on first paint
-const PromoPopup    = lazy(() => import("./components/PromoPopup").then(m => ({ default: m.PromoPopup })));
 const AdminLayout   = lazy(() => import("./components/admin/AdminLayout").then(m => ({ default: m.AdminLayout })));
 const RequireStaff  = lazy(() => import("./components/admin/RequireStaff").then(m => ({ default: m.RequireStaff })));
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
-const Home          = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
 const Products      = lazy(() => import("./pages/Products").then(m => ({ default: m.Products })));
 const ProductDetail = lazy(() => import("./pages/ProductDetail").then(m => ({ default: m.ProductDetail })));
 const Cart          = lazy(() => import("./pages/Cart").then(m => ({ default: m.Cart })));
@@ -28,6 +26,7 @@ const Account       = lazy(() => import("./pages/Account").then(m => ({ default:
 const Contact       = lazy(() => import("./pages/Contact").then(m => ({ default: m.Contact })));
 const OrderSuccess  = lazy(() => import("./pages/OrderSuccess").then(m => ({ default: m.OrderSuccess })));
 const TrackOrder    = lazy(() => import("./pages/TrackOrder").then(m => ({ default: m.TrackOrder })));
+const Favorites     = lazy(() => import("./pages/Favorites").then(m => ({ default: m.Favorites })));
 
 // ── Admin pages (lazy — never loaded by regular shoppers) ────────────────────
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -49,8 +48,8 @@ const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").t
 // Minimal spinner shown while a lazy chunk loads
 function PageLoader() {
   return (
-    <div className="min-h-[60dvh] flex items-center justify-center">
-      <span className="w-8 h-8 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+    <div className="min-h-[60dvh] flex items-center justify-center" role="status" aria-live="polite" aria-label="Chargement">
+      <span className="w-8 h-8 border-2 border-brand-200 border-t-brand-500 rounded-full animate-spin" aria-hidden="true" />
     </div>
   );
 }
@@ -62,12 +61,10 @@ function App() {
       <AuthProvider>
         <CartToastProvider>
         <CartProvider>
+          <FavoritesProvider>
           <UIProvider>
             <BrowserRouter>
-              <MetaPixel />
-              <CookieConsent />
-              <PromoPopup />
-              <ChatWidget />
+              <DeferredWidgets />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* ── Boutique (public) ── */}
@@ -76,6 +73,7 @@ function App() {
                     <Route path="produits" element={<Products />} />
                     <Route path="produits/:slug" element={<ProductDetail />} />
                     <Route path="panier" element={<Cart />} />
+                    <Route path="favoris" element={<Favorites />} />
                     <Route path="checkout" element={<Checkout />} />
                     <Route path="connexion" element={<Login />} />
                     <Route path="inscription" element={<Register />} />
@@ -113,6 +111,7 @@ function App() {
               </Suspense>
             </BrowserRouter>
           </UIProvider>
+          </FavoritesProvider>
         </CartProvider>
         </CartToastProvider>
       </AuthProvider>

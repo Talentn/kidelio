@@ -9,6 +9,7 @@
 export type SyncEvent =
   | { type: 'auth'; action: 'login' | 'logout' | 'refresh' }
   | { type: 'cart'; action: 'changed' }
+  | { type: 'favorites'; action: 'changed' }
 
 const CHANNEL_NAME = 'kids-shop-sync'
 const STORAGE_KEY = 'kids-shop-sync-event'

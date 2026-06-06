@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  ShoppingCart, ChevronLeft, Minus, Plus, Check,
+  ShoppingCart, ChevronLeft, Minus, Plus, Check, Heart,
   Shirt, Truck, Banknote, ShieldCheck, PackageCheck, Frown,
 } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
 import { useCart } from '../context/CartContext'
+import { useFavorites } from '../context/FavoritesContext'
 import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
 import { SEO } from '../components/SEO'
@@ -57,6 +58,7 @@ export function ProductDetail() {
 
   const { addItem } = useCart()
   const { openCart } = useUI()
+  const { isFavorite, toggle } = useFavorites()
 
   const sortedColors = useMemo(
     () =>
@@ -328,9 +330,23 @@ export function ProductDetail() {
         <div className="flex flex-col">
           {product.age_group && <span className="tag w-fit mb-3">{product.age_group}</span>}
 
-          <h1 className="font-display text-2xl md:text-3xl font-semibold text-ink leading-tight mb-3">
-            {product.name}
-          </h1>
+          <div className="flex items-start gap-3 mb-3">
+            <h1 className="font-display text-2xl md:text-3xl font-semibold text-ink leading-tight flex-1">
+              {product.name}
+            </h1>
+            <button
+              type="button"
+              onClick={() => toggle(product.id, product.name)}
+              aria-label={isFavorite(product.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              className={`w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full border-2 transition-colors ${
+                isFavorite(product.id)
+                  ? 'border-pink-200 bg-pink-50 text-pink-500'
+                  : 'border-gray-200 text-gray-400 hover:border-pink-200 hover:text-pink-400'
+              }`}
+            >
+              <Heart size={20} fill={isFavorite(product.id) ? 'currentColor' : 'none'} />
+            </button>
+          </div>
 
           <p className="text-2xl xs:text-3xl md:text-4xl font-bold text-brand-600 mb-4 xs:mb-5">
             {Number(product.effective_price).toFixed(3)}{' '}

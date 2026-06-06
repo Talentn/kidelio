@@ -44,6 +44,24 @@ export function Home() {
   )
 
   useEffect(() => {
+    const firstHero = sliders.find((s) => s.image_url)?.image_url
+    if (firstHero) {
+      const link = document.querySelector<HTMLLinkElement>('link[data-lcp-hero]')
+      if (link) {
+        link.href = firstHero
+      } else {
+        const preload = document.createElement('link')
+        preload.rel = 'preload'
+        preload.as = 'image'
+        preload.href = firstHero
+        preload.setAttribute('fetchpriority', 'high')
+        preload.dataset.lcpHero = 'true'
+        document.head.appendChild(preload)
+      }
+    }
+  }, [sliders])
+
+  useEffect(() => {
     Promise.all([
       api<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage'),
       api<{ categories: ShopCategory[] }>('/categories'),
