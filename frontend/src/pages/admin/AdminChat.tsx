@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageCircle, Send, X, Circle, User } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { MessageCircle, Send, X, Circle, User, Archive } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
 import { goWsUrl, goGet, goPost, goWsEnabled } from '../../lib/goApi'
 
@@ -204,10 +205,18 @@ export function AdminChat() {
       title="Chat Support"
       subtitle="Gérez les conversations clients en temps réel"
       actions={
-        <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${connected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-          <Circle size={7} fill="currentColor" />
-          {connected ? 'Connecté' : 'Déconnecté'}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/chat-archives"
+            className="btn-sm btn-secondary flex items-center gap-1.5"
+          >
+            <Archive size={14} /> Archives
+          </Link>
+          <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${connected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+            <Circle size={7} fill="currentColor" />
+            {connected ? 'Connecté' : 'Déconnecté'}
+          </span>
+        </div>
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-13rem)]">

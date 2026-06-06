@@ -43,7 +43,8 @@ const AdminPromos     = lazy(() => import("./pages/admin/AdminPromos").then(m =>
 const AdminPromoCodes = lazy(() => import("./pages/admin/AdminPromoCodes").then(m => ({ default: m.AdminPromoCodes })));
 const AdminUsers      = lazy(() => import("./pages/admin/AdminUsers").then(m => ({ default: m.AdminUsers })));
 const AdminLiveCart   = lazy(() => import("./pages/admin/AdminLiveCart").then(m => ({ default: m.AdminLiveCart })));
-const AdminChat       = lazy(() => import("./pages/admin/AdminChat").then(m => ({ default: m.AdminChat })));
+const AdminChat         = lazy(() => import("./pages/admin/AdminChat").then(m => ({ default: m.AdminChat })));
+const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").then(m => ({ default: m.AdminChatArchives })));
 
 // Minimal spinner shown while a lazy chunk loads
 function PageLoader() {
@@ -103,6 +104,7 @@ function App() {
                       <Route path="activite" element={<ActivityLogs />} />
                       <Route path="panier-live" element={<AdminLiveCart />} />
                       <Route path="chat" element={<AdminChat />} />
+                      <Route path="chat-archives" element={<AdminChatArchives />} />
                     </Route>
                   </Route>
 
