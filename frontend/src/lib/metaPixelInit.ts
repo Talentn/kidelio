@@ -23,6 +23,10 @@ type Fbq = {
 // Shared pixel state — same module instance across the app via ES module cache.
 export let _pixelReady = false
 
+let lastPageViewKey = ''
+let lastPageViewAt = 0
+const PAGE_VIEW_DEDUP_MS = 4000
+
 function pixelId(): string {
   return (import.meta.env.VITE_META_PIXEL_ID ?? '').trim()
 }
@@ -60,11 +64,24 @@ function injectScript(): void {
   first.parentNode?.insertBefore(s, first)
 }
 
+const PIXEL_READY_EVENT = 'kidelio-pixel-ready'
+
 export function activatePixel(): void {
   if (_pixelReady || !isMetaPixelConfigured()) return
   injectScript()
   window.fbq?.('init', pixelId())
   _pixelReady = true
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(PIXEL_READY_EVENT))
+  }
+}
+
+export function onPixelReady(handler: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  if (_pixelReady) handler()
+  const listener = () => handler()
+  window.addEventListener(PIXEL_READY_EVENT, listener)
+  return () => window.removeEventListener(PIXEL_READY_EVENT, listener)
 }
 
 export function injectNoscript(): void {
@@ -81,7 +98,14 @@ export function injectNoscript(): void {
   document.body.appendChild(ns)
 }
 
-export function trackPageView(): void {
+/** Fire PageView once per path within a short window (avoids duplicate SPA + consent fires). */
+export function trackPageView(path?: string): void {
   if (!_pixelReady) return
+  const pagePath = path ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
+  const key = `${pagePath}${typeof window !== 'undefined' ? window.location.search : ''}`
+  const now = Date.now()
+  if (key === lastPageViewKey && now - lastPageViewAt < PAGE_VIEW_DEDUP_MS) return
+  lastPageViewKey = key
+  lastPageViewAt = now
   window.fbq?.('track', 'PageView')
 }

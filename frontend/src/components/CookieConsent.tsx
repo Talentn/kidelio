@@ -23,7 +23,8 @@ export function CookieConsent() {
     if (isMetaPixelConfigured()) {
       activatePixel()
       injectNoscript()
-      trackPageView()
+      // MetaPixel route effect also fires PageView; dedup prevents doubles
+      trackPageView(window.location.pathname)
     }
     setVisible(false)
   }

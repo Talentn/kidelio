@@ -2,10 +2,9 @@
  * Mount once inside <BrowserRouter>.
  * – Fetches consent from the API a single time on app load.
  * – Activates the pixel if consent === 'all'.
- * – Fires PageView on every route change.
- * – Injects the <noscript> fallback after activation.
+ * – Fires exactly one PageView per route (no duplicate on landing).
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
 import {
@@ -13,6 +12,7 @@ import {
   injectNoscript,
   isMetaPixelConfigured,
   isPixelReady,
+  onPixelReady,
   trackPageView,
 } from '../lib/metaPixelInit'
 import { captureUtms } from '../lib/utm'
@@ -20,13 +20,16 @@ import { captureUtms } from '../lib/utm'
 export function MetaPixel() {
   const location = useLocation()
   const hydrated = useRef(false)
+  const [pixelActive, setPixelActive] = useState(() => isPixelReady())
 
-  /* ── capture UTM / fbclid on every landing (not just first) ── */
   useEffect(() => {
     captureUtms()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── one-time consent hydration ── */
+  /* ── stay in sync when CookieConsent activates the pixel ── */
+  useEffect(() => onPixelReady(() => setPixelActive(true)), [])
+
+  /* ── one-time consent hydration (activate only — no PageView here) ── */
   useEffect(() => {
     if (!isMetaPixelConfigured() || hydrated.current) return
     hydrated.current = true
@@ -36,18 +39,18 @@ export function MetaPixel() {
         if (d.consent === 'all') {
           activatePixel()
           injectNoscript()
-          trackPageView() // first load
+          setPixelActive(true)
         }
       })
       .catch(() => { /* no pixel without consent */ })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── PageView on each SPA navigation ── */
+  /* ── single PageView per route when pixel is active ── */
   useEffect(() => {
-    if (!isMetaPixelConfigured()) return
+    if (!isMetaPixelConfigured() || !pixelActive) return
     if (location.pathname.startsWith('/admin')) return
-    if (isPixelReady()) trackPageView()
-  }, [location.pathname])
+    trackPageView(location.pathname)
+  }, [location.pathname, pixelActive])
 
   return null
 }
