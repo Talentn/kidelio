@@ -131,7 +131,7 @@ export function ProductCard({ p }: { p: HomeProduct }) {
             <span className="text-xs font-semibold text-gray-500 ml-0.5">TND</span>
           </span>
           {discount > 0 && p.price && (
-            <span className="text-xs text-gray-400 line-through">
+            <span className="text-xs text-gray-500 line-through">
               {Number(p.price).toFixed(3)} TND
             </span>
           )}

@@ -64,13 +64,6 @@ export function Home() {
   }, [sliders, assets])
 
   useEffect(() => {
-    if (!homeHeroReady) return
-    requestAnimationFrame(() => {
-      document.getElementById('lcp-shell')?.remove()
-    })
-  }, [homeHeroReady])
-
-  useEffect(() => {
     Promise.all([
       apiV1Fresh<{ assets: HomeAssets; sliders: HeroSlide[] }>('/homepage'),
       api<{ categories: ShopCategory[] }>('/categories'),
@@ -127,18 +120,18 @@ export function Home() {
   return (
     <div className="bg-white">
       <SEO url="/" jsonLd={jsonLd} />
-      {/* Fixed-height hero wrapper — prevents AgeShopRail CLS when hero switches */}
-      <div className="min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
-        {!homeHeroReady ? (
-          <div className="w-full h-full min-h-[inherit] bg-[#FDF8F5]" aria-hidden="true" />
-        ) : slidesWithImage.length > 0 ? (
+      {/* Fixed-height hero — show fallback immediately; swap to carousel only when confirmed */}
+      <div className="hero-slot min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
+        {homeHeroReady && slidesWithImage.length > 0 ? (
           <HeroCarousel slides={slidesWithImage} />
         ) : (
           <FallbackHero heroImage={img('hero_fallback')} />
         )}
       </div>
 
-      <AgeShopRail />
+      <div className="age-rail-slot min-h-[148px] sm:min-h-[156px]">
+        {homeHeroReady ? <AgeShopRail /> : null}
+      </div>
 
       <div className="border-y border-gray-100 bg-white">
         <div className="page-wrap py-3">

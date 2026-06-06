@@ -11,9 +11,9 @@ const AGE_LINKS = [
 
 export function AgeShopRail() {
   return (
-    <section className="bg-white border-b border-gray-100">
+    <section className="bg-white border-b border-gray-100 min-h-[inherit]">
       <div className="page-wrap py-6 md:py-8">
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 text-center md:text-left">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3 text-center md:text-left">
           Acheter par âge
         </p>
         <div className="flex gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
@@ -27,7 +27,7 @@ export function AgeShopRail() {
                 <Icon size={20} strokeWidth={2} />
               </span>
               <span className="font-bold text-sm text-gray-900 text-center leading-tight">{label}</span>
-              <span className="text-[10px] text-gray-500 font-medium mt-0.5">{sub}</span>
+              <span className="text-[10px] text-gray-600 font-medium mt-0.5">{sub}</span>
             </Link>
           ))}
         </div>

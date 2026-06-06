@@ -53,7 +53,7 @@ export function CategoryPhotoGrid({
       <div className="flex items-end justify-between mb-5 md:mb-6">
         <div>
           <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900">Nos univers</h2>
-          <p className="text-gray-400 text-sm mt-0.5">Parcourez nos catégories</p>
+          <p className="text-gray-500 text-sm mt-0.5">Parcourez nos catégories</p>
         </div>
         <Link
           to="/produits"

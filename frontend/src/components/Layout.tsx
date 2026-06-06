@@ -137,7 +137,7 @@ export function Layout() {
                 <div className="text-brand-400 flex-shrink-0">{b.icon}</div>
                 <div>
                   <p className="text-white font-bold text-sm">{b.title}</p>
-                  <p className="text-gray-500 text-xs">{b.desc}</p>
+                  <p className="text-gray-300 text-xs">{b.desc}</p>
                 </div>
               </div>
             ))}
@@ -200,7 +200,7 @@ export function Layout() {
         </div>
 
         <div className="border-t border-gray-800">
-          <div className="page-wrap py-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-600">
+          <div className="page-wrap py-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
             <p>© {new Date().getFullYear()} Kidelio — Tous droits réservés</p>
             <p>Conçu avec soin en Tunisie</p>
           </div>

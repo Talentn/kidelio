@@ -10,9 +10,3 @@ ReactDOM.createRoot(root).render(
     <App />
   </React.StrictMode>
 )
-
-// LCP shell is home-only; admin and other routes hide it immediately (see index.html)
-const isHome = window.location.pathname === '/' || window.location.pathname === ''
-if (!isHome) {
-  document.getElementById('lcp-shell')?.remove()
-}

@@ -49,7 +49,7 @@ export function CookieConsent() {
       <button
         type="button"
         onClick={accept}
-        className="w-full text-sm font-bold py-3 rounded-full bg-brand-500 text-white hover:bg-brand-600 transition-colors shadow-sm"
+        className="w-full text-sm font-bold py-3 rounded-full bg-brand-700 text-white hover:bg-brand-800 transition-colors shadow-sm"
       >
         Accepter et continuer
       </button>
@@ -59,7 +59,7 @@ export function CookieConsent() {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="w-full mt-2 text-[10px] text-gray-300 hover:text-gray-400 transition-colors text-center"
+          className="w-full mt-2 text-[11px] text-gray-500 hover:text-gray-600 transition-colors text-center"
         >
           voir plus
         </button>
@@ -69,7 +69,7 @@ export function CookieConsent() {
         <button
           type="button"
           onClick={decline}
-          className="w-full mt-2 text-[11px] text-gray-400 hover:text-gray-500 transition-colors text-center underline underline-offset-2"
+          className="w-full mt-2 text-[11px] text-gray-500 hover:text-gray-700 transition-colors text-center underline underline-offset-2"
         >
           Cookies nécessaires uniquement
         </button>

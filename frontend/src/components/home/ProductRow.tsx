@@ -25,7 +25,7 @@ export function ProductRow({
         <div className="flex items-end justify-between mb-6 md:mb-8">
           <div>
             <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900">{title}</h2>
-            <p className="text-gray-400 text-sm mt-1">{subtitle}</p>
+            <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
           </div>
           <Link
             to={viewAllHref}

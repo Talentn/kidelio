@@ -40,23 +40,30 @@
     <meta name="twitter:description" content="La boutique en ligne dédiée aux bébés et enfants en Tunisie. Livraison rapide, paiement à la livraison." />
     <meta name="twitter:image" content="https://kideliowear.com/kidelio-logo.png" />
 
-    <!-- LCP hero — home only; src updated from sessionStorage when available -->
+    <!-- Critical CSS — avoids layout shift before Tailwind bundle loads -->
+    <style>
+      *,*::before,*::after{box-sizing:border-box}
+      html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+      body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fff;color:#111827}
+      #root{min-height:100dvh}
+      .hero-slot{min-height:420px;background:#FDF8F5}
+      @media(min-width:640px){.hero-slot{min-height:480px}}
+      @media(min-width:768px){.hero-slot{min-height:560px}}
+      @media(min-width:1024px){.hero-slot{min-height:620px}}
+      .age-rail-slot{min-height:148px;background:#fff;border-bottom:1px solid #f3f4f6}
+    </style>
+
+    <!-- LCP hero image — home only -->
     <link rel="preload" as="image" href="/hero-kids.png" fetchpriority="high" data-lcp-hero />
     <script>
       (function () {
         var path = location.pathname;
-        var isHome = path === "/" || path === "";
-        if (!isHome) {
-          document.documentElement.classList.add("no-lcp-shell");
-          return;
-        }
+        if (path !== "/" && path !== "") return;
         try {
           var saved = sessionStorage.getItem("kidelio_lcp_hero");
           if (saved) {
             var link = document.querySelector('link[data-lcp-hero]');
             if (link) link.href = saved;
-            var img = document.getElementById("lcp-hero-img");
-            if (img) img.src = saved;
           }
         } catch (e) {}
       })();
@@ -82,17 +89,6 @@
   </head>
   <body>
     <a class="skip-link" href="#main-content">Aller au contenu principal</a>
-    <div id="lcp-shell" aria-hidden="true">
-      <img
-        id="lcp-hero-img"
-        src="/hero-kids.png"
-        alt=""
-        width="1920"
-        height="1080"
-        fetchpriority="high"
-        decoding="sync"
-      />
-    </div>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>
