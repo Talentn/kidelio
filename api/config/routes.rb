@@ -21,7 +21,8 @@ Rails.application.routes.draw do
       get "cart/admin/events", to: "go_proxy#cart_admin_events"
       get "favorites/admin/events", to: "go_proxy#favorites_admin_events"
 
-      get "config", to: "config#show"
+      get "store", to: "config#show"
+      get "config", to: "config#show" # legacy alias (often blocked by ad blockers)
       get "auth/me", to: "auth#me"
       post "auth/register", to: "auth#register"
       post "auth/login", to: "auth#login"
