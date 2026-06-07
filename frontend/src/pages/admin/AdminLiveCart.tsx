@@ -55,11 +55,11 @@ export function AdminLiveCart() {
   const [tab, setTab] = useState<'cart' | 'favorites'>('cart')
 
   const [cartEvents, setCartEvents] = useState<CartEvent[]>([])
-  const [cartConnected, setCartConnected] = useState(false)
+  const [cartWsLive, setCartWsLive] = useState(false)
   const cartWsRef = useRef<WebSocket | null>(null)
 
   const [favEvents, setFavEvents] = useState<FavoriteEvent[]>([])
-  const [favConnected, setFavConnected] = useState(false)
+  const [favWsLive, setFavWsLive] = useState(false)
   const favWsRef = useRef<WebSocket | null>(null)
 
   const refreshCart = () =>
@@ -72,21 +72,21 @@ export function AdminLiveCart() {
       .then(data => setFavEvents(data.events || []))
       .catch(() => {})
 
-  // Cart feed — poll when WebSocket is off (shared nginx cannot upgrade WS)
+  // Cart feed — poll when WebSocket is off or failed
   useEffect(() => {
     refreshCart()
-    if (goWsEnabled()) return
-    setCartConnected(true)
-    const id = setInterval(refreshCart, 3000)
+    if (goWsEnabled() && cartWsLive) return
+    const id = setInterval(refreshCart, import.meta.env.PROD ? 5000 : 3000)
     return () => clearInterval(id)
-  }, [])
+  }, [cartWsLive])
 
   useEffect(() => {
     if (!goWsEnabled()) return
     const ws = new WebSocket(goWsUrl('/cart/admin/ws'))
     cartWsRef.current = ws
-    ws.onopen  = () => setCartConnected(true)
-    ws.onclose = () => setCartConnected(false)
+    ws.onopen  = () => setCartWsLive(true)
+    ws.onerror = () => ws.close()
+    ws.onclose = () => setCartWsLive(false)
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'history') {
@@ -98,21 +98,21 @@ export function AdminLiveCart() {
     return () => ws.close()
   }, [])
 
-  // Favorites feed — poll when WebSocket is off
+  // Favorites feed — poll when WebSocket is off or failed
   useEffect(() => {
     refreshFavorites()
-    if (goWsEnabled()) return
-    setFavConnected(true)
-    const id = setInterval(refreshFavorites, 3000)
+    if (goWsEnabled() && favWsLive) return
+    const id = setInterval(refreshFavorites, import.meta.env.PROD ? 5000 : 3000)
     return () => clearInterval(id)
-  }, [])
+  }, [favWsLive])
 
   useEffect(() => {
     if (!goWsEnabled()) return
     const ws = new WebSocket(goWsUrl('/favorites/admin/ws'))
     favWsRef.current = ws
-    ws.onopen  = () => setFavConnected(true)
-    ws.onclose = () => setFavConnected(false)
+    ws.onopen  = () => setFavWsLive(true)
+    ws.onerror = () => ws.close()
+    ws.onclose = () => setFavWsLive(false)
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'history') {
@@ -129,7 +129,9 @@ export function AdminLiveCart() {
     else await refreshFavorites()
   }
 
-  const connected = tab === 'cart' ? cartConnected : favConnected
+  const connected = tab === 'cart'
+    ? (!goWsEnabled() || cartWsLive)
+    : (!goWsEnabled() || favWsLive)
   const events = tab === 'cart' ? cartEvents : favEvents
 
   const cartAddCount    = cartEvents.filter(e => e.action === 'add').length

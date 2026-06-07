@@ -41,21 +41,40 @@ export function ChatWidget() {
     if (saved) { setRoomId(saved); setStep('chat') }
   }, [])
 
-  const refreshMessages = (room: string) =>
-    goGet<{ messages: Msg[] }>(`/chat/rooms/${room}/messages`)
+  const pollMs = import.meta.env.PROD ? 5000 : 2500
+
+  const refreshMessages = (room: string, signal?: AbortSignal) =>
+    goGet<{ messages: Msg[] }>(`/chat/rooms/${room}/messages`, signal)
       .then(data => {
         if (data.messages?.length) setMsgs(data.messages)
       })
       .catch(() => {})
 
-  // Load history + poll when WebSocket is unavailable (shared nginx blocks WS upgrade)
+  // Poll only while the chat panel is open (avoids background load on every page visit)
   useEffect(() => {
-    if (!roomId || step !== 'chat') return
-    refreshMessages(roomId)
-    if (wsLive) return
-    const id = setInterval(() => refreshMessages(roomId), 2500)
-    return () => clearInterval(id)
-  }, [roomId, step, wsLive])
+    if (!roomId || step !== 'chat' || !open || wsLive) return
+
+    const ac = new AbortController()
+    let visible = document.visibilityState !== 'hidden'
+
+    const tick = () => {
+      if (visible) refreshMessages(roomId, ac.signal)
+    }
+
+    const onVisibility = () => {
+      visible = document.visibilityState !== 'hidden'
+      if (visible) tick()
+    }
+
+    tick()
+    const id = setInterval(tick, pollMs)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisibility)
+      ac.abort()
+    }
+  }, [roomId, step, open, wsLive, pollMs])
 
   // WebSocket only when enabled (dev or VITE_ENABLE_CHAT_WS=true); prod uses HTTP polling
   useEffect(() => {
@@ -65,6 +84,7 @@ export function ChatWidget() {
     wsRef.current = ws
 
     ws.onopen = () => setWsLive(true)
+    ws.onerror = () => ws.close()
     ws.onclose = () => setWsLive(false)
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)

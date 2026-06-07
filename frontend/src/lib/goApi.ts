@@ -53,8 +53,8 @@ export function goTrack(path: string, body: unknown) {
   goPost(path, body, { 'X-Session-Id': liveSessionId() }).catch(() => {})
 }
 
-export async function goGet<T>(path: string): Promise<T> {
-  const res = await fetch(goUrl(path), { credentials: 'include' })
+export async function goGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(goUrl(path), { credentials: 'include', signal })
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }

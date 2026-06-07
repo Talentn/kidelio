@@ -56,6 +56,12 @@ if ! grep -qE '^GO_INTERNAL_SECRET=.+$' "$DEPLOY_DIR/.env.production"; then
   echo "==> Generating GO_INTERNAL_SECRET for Rails→Go internal auth"
   echo "GO_INTERNAL_SECRET=$(openssl rand -hex 32)" >> "$DEPLOY_DIR/.env.production"
 fi
+# WebSocket (chat, live cart, favorites) — baked into frontend at build time
+if grep -qE '^VITE_ENABLE_CHAT_WS=' "$DEPLOY_DIR/.env.production"; then
+  sed -i 's/^VITE_ENABLE_CHAT_WS=.*/VITE_ENABLE_CHAT_WS=true/' "$DEPLOY_DIR/.env.production"
+else
+  echo "VITE_ENABLE_CHAT_WS=true" >> "$DEPLOY_DIR/.env.production"
+fi
 
 # ── 3. Install frontend deps ─────────────────────────────────────────────────
 echo "==> Installing frontend dependencies..."
@@ -119,6 +125,10 @@ $COMPOSE exec -T web bin/rails db:prepare
 # ── 9. Clean up old Docker images ─────────────────────────────────────────────
 echo "==> Cleaning up dangling Docker images..."
 docker image prune -f
+
+# ── 10. Nginx WebSocket routes (daizo-nginx or host nginx) ───────────────────
+echo "==> Configuring nginx for WebSockets..."
+bash "$DEPLOY_DIR/setup-ws.sh" || echo "WARN: WebSocket nginx setup failed — run: bash deploy/setup-ws.sh"
 
 echo ""
 echo "Deploy complete."

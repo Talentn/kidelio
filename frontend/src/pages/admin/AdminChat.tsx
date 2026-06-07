@@ -49,14 +49,16 @@ export function AdminChat() {
       .then(data => setQueue(data.rooms || []))
       .catch(() => {})
 
-  // Queue snapshot — poll when WebSocket is off (shared nginx cannot upgrade WS)
+  // Queue — poll when WebSocket is off or failed to connect
   useEffect(() => {
     refreshQueue()
-    if (goWsEnabled()) return
-    setConnected(true)
-    const id = setInterval(refreshQueue, 3000)
+    if (goWsEnabled() && connected) return
+    if (!goWsEnabled()) setConnected(true)
+    const id = setInterval(() => {
+      if (document.visibilityState !== 'hidden') refreshQueue()
+    }, import.meta.env.PROD ? 5000 : 3000)
     return () => clearInterval(id)
-  }, [])
+  }, [connected])
 
   useEffect(() => {
     if (!goWsEnabled()) return
@@ -64,6 +66,7 @@ export function AdminChat() {
     wsRef.current = ws
 
     ws.onopen = () => setConnected(true)
+    ws.onerror = () => ws.close()
     ws.onclose = () => {
       setConnected(false)
       wsRef.current = null
@@ -111,22 +114,33 @@ export function AdminChat() {
     return () => ws.close()
   }, [])
 
-  // Poll active room messages when WebSocket is unavailable
+  // Poll active room messages when WebSocket is unavailable or disconnected
   useEffect(() => {
-    if (!joined || !activeRoom || goWsEnabled()) return
+    if (!joined || !activeRoom || (goWsEnabled() && connected)) return
     const roomId = activeRoom.id
-    const refresh = () =>
-      goGet<{ messages: ChatMsg[] }>(`/chat/rooms/${roomId}/messages`)
+    const pollMs = import.meta.env.PROD ? 5000 : 2500
+    const ac = new AbortController()
+
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return
+      goGet<{ messages: ChatMsg[] }>(`/chat/rooms/${roomId}/messages`, ac.signal)
         .then(data => {
           if (activeRoomRef.current === roomId && data.messages?.length) {
             setMsgs(data.messages)
           }
         })
         .catch(() => {})
+    }
     refresh()
-    const id = setInterval(refresh, 2500)
-    return () => clearInterval(id)
-  }, [joined, activeRoom])
+    const id = setInterval(refresh, pollMs)
+    const onVisibility = () => { if (document.visibilityState === 'visible') refresh() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisibility)
+      ac.abort()
+    }
+  }, [joined, activeRoom, connected])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
