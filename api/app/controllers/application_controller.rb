@@ -55,6 +55,16 @@ class ApplicationController < ActionController::Base
     render json: { error: "Admin requis" }, status: :forbidden
   end
 
+  def require_super_ops!
+    require_staff!
+    return if performed?
+
+    allowed = ENV.fetch("SUPER_OPS_EMAIL", "alaghabi98@gmail.com").strip.downcase
+    return if Current.user.email.to_s.strip.downcase == allowed
+
+    render json: { error: "Accès refusé" }, status: :forbidden
+  end
+
   def sign_in(user)
     session[:user_id] = user.id
     Current.user = user

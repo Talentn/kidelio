@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireStaff } from "./components/admin/RequireStaff";
+import { RequireSuperOps } from "./components/admin/RequireSuperOps";
 
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Statistics    = lazy(() => import("./pages/admin/Statistics").then((m) => ({ default: m.Statistics })));
@@ -19,6 +20,7 @@ const AdminUsers      = lazy(() => import("./pages/admin/AdminUsers").then((m) =
 const AdminLiveCart   = lazy(() => import("./pages/admin/AdminLiveCart").then((m) => ({ default: m.AdminLiveCart })));
 const AdminChat         = lazy(() => import("./pages/admin/AdminChat").then((m) => ({ default: m.AdminChat })));
 const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").then((m) => ({ default: m.AdminChatArchives })));
+const SystemStatus      = lazy(() => import("./pages/admin/SystemStatus").then((m) => ({ default: m.SystemStatus })));
 
 function AdminPageLoader() {
   return (
@@ -51,6 +53,9 @@ export default function AdminApp() {
             <Route path="panier-live" element={<AdminLiveCart />} />
             <Route path="chat" element={<AdminChat />} />
             <Route path="chat-archives" element={<AdminChatArchives />} />
+            <Route element={<RequireSuperOps />}>
+              <Route path="systeme" element={<SystemStatus />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

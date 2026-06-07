@@ -2,9 +2,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { isSuperOps } from '../../lib/superOps'
 import { apiAdmin } from '../../lib/api'
 import { useLivePoll } from '../../hooks/useLivePoll'
 import { ToastProvider } from './ui'
@@ -35,9 +36,10 @@ function Badge({ count }: { count: number }) {
 
 export function AdminLayout() {
   const navigate   = useNavigate()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const stats      = useAdminStats()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const superOps   = isSuperOps(user?.email)
 
   const handleLogout = async () => {
     await logout()
@@ -61,6 +63,7 @@ export function AdminLayout() {
     { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle },
     { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive },
     { to: '/admin/panier-live', label: 'Activité live', icon: Circle },
+    ...(superOps ? [{ to: '/admin/systeme', label: 'État services', icon: Server }] : []),
   ]
 
   const SidebarContent = () => (
