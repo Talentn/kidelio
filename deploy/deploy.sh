@@ -60,7 +60,7 @@ fi
 if grep -qE '^RAILS_MAX_THREADS=' "$DEPLOY_DIR/.env.production"; then
   :
 else
-  echo "RAILS_MAX_THREADS=10" >> "$DEPLOY_DIR/.env.production"
+  echo "RAILS_MAX_THREADS=20" >> "$DEPLOY_DIR/.env.production"
 fi
 # WebSocket (chat, live cart, favorites) — baked into frontend at build time
 if grep -qE '^VITE_ENABLE_CHAT_WS=' "$DEPLOY_DIR/.env.production"; then

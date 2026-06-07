@@ -26,7 +26,7 @@
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
 # IO-heavy app (Go proxy, Active Storage). Override in production via RAILS_MAX_THREADS.
-threads_count = ENV.fetch("RAILS_MAX_THREADS", 10).to_i
+threads_count = ENV.fetch("RAILS_MAX_THREADS", 16).to_i
 threads threads_count, threads_count
 
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
