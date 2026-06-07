@@ -61,6 +61,7 @@ Rails.application.routes.draw do
       get "dashboard/stats", to: "dashboard#stats"
       get "statistics", to: "statistics#show"
       get "system-status", to: "system_status#show"
+      get "queues-status", to: "queues_status#show"
       resources :products do
         resources :colors, only: %i[create update destroy], controller: "product_colors" do
           patch "reorder", on: :collection, action: :reorder

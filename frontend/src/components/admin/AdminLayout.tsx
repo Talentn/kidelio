@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server, ListTodo,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { isSuperOps } from '../../lib/superOps'
@@ -63,7 +63,10 @@ export function AdminLayout() {
     { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle },
     { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive },
     { to: '/admin/panier-live', label: 'Activité live', icon: Circle },
-    ...(superOps ? [{ to: '/admin/systeme', label: 'État services', icon: Server }] : []),
+    ...(superOps ? [
+      { to: '/admin/systeme', label: 'État services', icon: Server },
+      { to: '/admin/files-attente', label: "Files d'attente", icon: ListTodo },
+    ] : []),
   ]
 
   const SidebarContent = () => (

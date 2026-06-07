@@ -21,6 +21,7 @@ const AdminLiveCart   = lazy(() => import("./pages/admin/AdminLiveCart").then((m
 const AdminChat         = lazy(() => import("./pages/admin/AdminChat").then((m) => ({ default: m.AdminChat })));
 const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").then((m) => ({ default: m.AdminChatArchives })));
 const SystemStatus      = lazy(() => import("./pages/admin/SystemStatus").then((m) => ({ default: m.SystemStatus })));
+const QueuesStatus      = lazy(() => import("./pages/admin/QueuesStatus").then((m) => ({ default: m.QueuesStatus })));
 
 function AdminPageLoader() {
   return (
@@ -55,6 +56,7 @@ export default function AdminApp() {
             <Route path="chat-archives" element={<AdminChatArchives />} />
             <Route element={<RequireSuperOps />}>
               <Route path="systeme" element={<SystemStatus />} />
+              <Route path="files-attente" element={<QueuesStatus />} />
             </Route>
           </Route>
         </Route>
