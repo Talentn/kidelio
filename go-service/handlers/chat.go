@@ -173,7 +173,7 @@ func CustomerSendMessage(w http.ResponseWriter, r *http.Request) {
 func CustomerWS(w http.ResponseWriter, r *http.Request) {
 	roomID := r.PathValue("id")
 	room, err := store.GetRoom(roomID)
-	if err != nil || room.Status == "closed" {
+	if err != nil || room == nil {
 		http.Error(w, "room not found", http.StatusNotFound)
 		return
 	}
@@ -184,18 +184,34 @@ func CustomerWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &hub.Client{Conn: conn, Send: make(chan []byte, 64), RoomID: roomID}
+	go client.Pump()
+
+	history, _ := store.GetMessages(roomID)
+	if history == nil {
+		history = []store.Message{}
+	}
+	if len(history) > 0 {
+		client.Write(map[string]any{"type": "history", "messages": history})
+	}
+
+	if room.Status == "closed" {
+		payload := map[string]any{"type": "room_closed", "room_id": roomID}
+		for i := len(history) - 1; i >= 0; i-- {
+			if history[i].SenderType == "system" {
+				payload["message"] = history[i]
+				break
+			}
+		}
+		client.Write(payload)
+		conn.Close()
+		return
+	}
+
 	hub.Chat.JoinRoom(roomID, client)
 	defer func() {
 		hub.Chat.LeaveRoom(roomID, client)
 		conn.Close()
 	}()
-
-	go client.Pump()
-
-	// Send existing messages (welcome, etc.)
-	if history, err := store.GetMessages(roomID); err == nil && len(history) > 0 {
-		client.Write(map[string]any{"type": "history", "messages": history})
-	}
 
 	// Send queue position while waiting
 	if room.Status == "queued" {
@@ -218,6 +234,7 @@ func CustomerWS(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if _, err := deliverCustomerMessage(roomID, msg.Content); err != nil {
+			client.Write(map[string]any{"type": "room_closed", "room_id": roomID})
 			break
 		}
 	}

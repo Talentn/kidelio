@@ -39,6 +39,25 @@ export function ChatWidget() {
   const pendingId = useRef(0)
   const pollMs = import.meta.env.PROD ? 5000 : 2500
 
+  const beginNewChat = () => {
+    wsRef.current?.close()
+    sessionStorage.removeItem('chat_room_id')
+    setRoomId('')
+    setStep('form')
+    setMsgs([])
+    setRoomStatus(null)
+    setPosition(null)
+    setInput('')
+  }
+
+  const markRoomClosed = (closeMsg?: Msg) => {
+    setRoomStatus('closed')
+    setPosition(null)
+    sessionStorage.removeItem('chat_room_id')
+    wsRef.current?.close()
+    if (closeMsg) setMsgs(prev => mergeMsgs(prev, [closeMsg]))
+  }
+
   const refreshMessages = (room: string, signal?: AbortSignal) =>
     goGet<{ messages: Msg[]; room?: { status: string }; queue_position?: number }>(
       `/chat/rooms/${room}/messages`,
@@ -46,15 +65,13 @@ export function ChatWidget() {
     )
       .then(data => {
         if (data.messages?.length) setMsgs(data.messages)
+        if (data.room?.status === 'closed') {
+          markRoomClosed()
+          return
+        }
         if (data.room?.status) {
           setRoomStatus(data.room.status)
-          if (data.room.status === 'active') {
-            setPosition(null)
-          }
-          if (data.room.status === 'closed') {
-            setPosition(null)
-            sessionStorage.removeItem('chat_room_id')
-          }
+          if (data.room.status === 'active') setPosition(null)
         }
         if (typeof data.queue_position === 'number' && data.room?.status === 'queued') {
           setPosition(data.queue_position)
@@ -78,7 +95,7 @@ export function ChatWidget() {
 
   // Poll only while the chat panel is open (avoids background load on every page visit)
   useEffect(() => {
-    if (!roomId || step !== 'chat' || !open || wsLive) return
+    if (!roomId || step !== 'chat' || !open || wsLive || roomStatus === 'closed') return
 
     const ac = new AbortController()
     let visible = document.visibilityState !== 'hidden'
@@ -100,11 +117,11 @@ export function ChatWidget() {
       document.removeEventListener('visibilitychange', onVisibility)
       ac.abort()
     }
-  }, [roomId, step, open, wsLive, pollMs])
+  }, [roomId, step, open, wsLive, pollMs, roomStatus])
 
   // WebSocket only while chat panel is open (avoids hanging connections in background)
   useEffect(() => {
-    if (!roomId || !open || !goWsEnabled()) return
+    if (!roomId || !open || !goWsEnabled() || roomStatus === 'closed') return
     setWsLive(false)
     const ws = new WebSocket(goWsUrl(`/chat/ws/${roomId}`))
     wsRef.current = ws
@@ -134,24 +151,14 @@ export function ChatWidget() {
         setPosition(data.position)
         setRoomStatus('queued')
       } else if (data.type === 'room_closed') {
-        setMsgs(prev => mergeMsgs(prev, [data.message]))
-        setPosition(null)
-        setRoomStatus('closed')
-        sessionStorage.removeItem('chat_room_id')
-        wsRef.current?.close()
-        setTimeout(() => {
-          setRoomId('')
-          setStep('form')
-          setMsgs([])
-          setRoomStatus(null)
-        }, 2500)
+        markRoomClosed(data.message)
       }
     }
     return () => {
       window.clearTimeout(connectTimer)
       ws.close()
     }
-  }, [roomId, open])
+  }, [roomId, open, roomStatus])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -179,7 +186,7 @@ export function ChatWidget() {
 
   const send = async () => {
     const content = input.trim()
-    if (!content || !roomId || sending) return
+    if (!content || !roomId || sending || roomStatus === 'closed') return
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'message', content }))
@@ -204,7 +211,7 @@ export function ChatWidget() {
       setMsgs(prev => prev.map(m => (m.id === tempId ? data.message : m)))
     } catch {
       setMsgs(prev => prev.filter(m => m.id !== tempId))
-      setInput(content)
+      markRoomClosed()
     } finally {
       setSending(false)
     }
@@ -312,23 +319,38 @@ export function ChatWidget() {
                 <div ref={bottomRef} />
               </div>
 
-              <div className="border-t border-gray-100 p-2 flex gap-2">
-                <input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder="Écrivez un message..."
-                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400"
-                />
-                <button
-                  type="button"
-                  onClick={send}
-                  disabled={!input.trim() || !roomId || sending}
-                  className="w-9 h-9 bg-brand-500 text-white rounded-xl flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors"
-                >
-                  <Send size={14} />
-                </button>
-              </div>
+              {roomStatus === 'closed' ? (
+                <div className="border-t border-gray-100 p-3 space-y-2">
+                  <p className="text-xs text-center text-gray-500">
+                    Cette conversation est terminée.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={beginNewChat}
+                    className="w-full bg-brand-500 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-brand-600 transition-colors"
+                  >
+                    Démarrer une nouvelle conversation
+                  </button>
+                </div>
+              ) : (
+                <div className="border-t border-gray-100 p-2 flex gap-2">
+                  <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    placeholder="Écrivez un message..."
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={send}
+                    disabled={!input.trim() || !roomId || sending}
+                    className="w-9 h-9 bg-brand-500 text-white rounded-xl flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
