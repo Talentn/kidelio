@@ -38,9 +38,18 @@ module Api
 
       def destroy
         product = Product.find(params[:id])
-        product.destroy!
-        invalidate_catalog_cache
-        render json: { ok: true }
+        if product.destroy
+          invalidate_catalog_cache
+          render json: { ok: true }
+        else
+          render json: {
+            errors: product.errors.full_messages.presence || [ "Impossible de supprimer ce produit" ]
+          }, status: :unprocessable_entity
+        end
+      rescue ActiveRecord::DeleteRestrictionError
+        render json: {
+          errors: [ "Ce produit ne peut pas être supprimé car il est encore référencé ailleurs." ]
+        }, status: :unprocessable_entity
       end
 
       private

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { apiAdmin } from '../../lib/api'
@@ -46,6 +46,7 @@ export function AdminLayout() {
 
   const NAV = [
     { to: '/admin',            label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+    { to: '/admin/statistiques', label: 'Statistiques',   icon: BarChart3 },
     { to: '/admin/produits',   label: 'Produits',         icon: Package },
     { to: '/admin/stock',      label: 'Stock',            icon: Boxes },
     { to: '/admin/commandes',  label: 'Commandes',        icon: ShoppingCart,   badge: stats.pending_orders },

@@ -157,6 +157,7 @@ export function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { to: "/admin/produits", label: "Nouveau produit", icon: <Plus size={18} />, color: "text-brand-600 bg-brand-50" },
+          { to: "/admin/statistiques", label: "Statistiques", icon: <Banknote size={18} />, color: "text-violet-600 bg-violet-50" },
           { to: "/admin/stock", label: "Gérer le stock", icon: <Boxes size={18} />, color: "text-emerald-600 bg-emerald-50" },
           { to: "/admin/categories", label: "Catégories", icon: <Tags size={18} />, color: "text-indigo-600 bg-indigo-50" },
           { to: "/", label: "Voir la boutique", icon: <ArrowRight size={18} />, color: "text-slate-600 bg-slate-100" },

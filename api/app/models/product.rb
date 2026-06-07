@@ -3,7 +3,7 @@ class Product < ApplicationRecord
   audit_as "Product"
 
   belongs_to :category, optional: true
-  has_many :order_items, dependent: :restrict_with_error
+  has_many :order_items, dependent: :nullify
   has_many :colors, -> { ordered }, class_name: "ProductColor", dependent: :destroy
   has_many_attached :images
 

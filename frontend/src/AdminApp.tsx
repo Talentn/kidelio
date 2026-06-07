@@ -4,6 +4,7 @@ import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireStaff } from "./components/admin/RequireStaff";
 
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then((m) => ({ default: m.Dashboard })));
+const Statistics    = lazy(() => import("./pages/admin/Statistics").then((m) => ({ default: m.Statistics })));
 const AdminProducts   = lazy(() => import("./pages/admin/AdminProducts").then((m) => ({ default: m.AdminProducts })));
 const AdminStock      = lazy(() => import("./pages/admin/AdminStock").then((m) => ({ default: m.AdminStock })));
 const AdminOrders     = lazy(() => import("./pages/admin/AdminOrders").then((m) => ({ default: m.AdminOrders })));
@@ -35,6 +36,7 @@ export default function AdminApp() {
         <Route element={<RequireStaff />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
+            <Route path="statistiques" element={<Statistics />} />
             <Route path="produits" element={<AdminProducts />} />
             <Route path="stock" element={<AdminStock />} />
             <Route path="commandes" element={<AdminOrders />} />

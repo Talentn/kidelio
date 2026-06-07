@@ -58,6 +58,7 @@ Rails.application.routes.draw do
 
     namespace :admin do
       get "dashboard/stats", to: "dashboard#stats"
+      get "statistics", to: "statistics#show"
       resources :products do
         resources :colors, only: %i[create update destroy], controller: "product_colors" do
           patch "reorder", on: :collection, action: :reorder
