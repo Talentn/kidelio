@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageCircle, Send, X, Circle, User, Archive } from 'lucide-react'
+import { MessageCircle, Send, X, Circle, User, Archive, UserPlus } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
 import { goWsUrl, goGet, goPost, goWsEnabled } from '../../lib/goApi'
 import { chatAgentLabel } from '../../lib/chatDisplay'
@@ -29,33 +29,54 @@ function appendMsg(prev: ChatMsg[], msg: ChatMsg) {
 }
 
 export function AdminChat() {
-  const [queue, setQueue]         = useState<Room[]>([])
-  const [activeRoom, setActiveRoom] = useState<Room | null>(null)
-  const [msgs, setMsgs]           = useState<ChatMsg[]>([])
-  const [input, setInput]         = useState('')
-  const [connected, setConnected] = useState(false)
-  const [joined, setJoined]       = useState(false)
-  const [sending, setSending]     = useState(false)
-  const wsRef         = useRef<WebSocket | null>(null)
-  const activeRoomRef = useRef<string | null>(null)
-  const bottomRef     = useRef<HTMLDivElement>(null)
+  const [queue, setQueue]             = useState<Room[]>([])
+  const [activeRooms, setActiveRooms] = useState<Room[]>([])
+  const [activeRoom, setActiveRoom]   = useState<Room | null>(null)
+  const [msgs, setMsgs]               = useState<ChatMsg[]>([])
+  const [input, setInput]             = useState('')
+  const [connected, setConnected]     = useState(false)
+  const [joined, setJoined]           = useState(false)
+  const [sending, setSending]         = useState(false)
+  const [joining, setJoining]         = useState(false)
+  const wsRef           = useRef<WebSocket | null>(null)
+  const activeRoomRef   = useRef<string | null>(null)
+  const msgsByRoom      = useRef<Record<string, ChatMsg[]>>({})
+  const bottomRef       = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     activeRoomRef.current = activeRoom?.id ?? null
   }, [activeRoom])
 
-  const refreshQueue = () =>
-    goGet<{ rooms: Room[] }>('/chat/admin/queue')
-      .then(data => setQueue(data.rooms || []))
+  const cacheMsgs = (roomId: string, next: ChatMsg[]) => {
+    msgsByRoom.current[roomId] = next
+    if (activeRoomRef.current === roomId) setMsgs(next)
+  }
+
+  const refreshInbox = () =>
+    goGet<{ queued: Room[]; active: Room[] }>('/chat/admin/queue')
+      .then(data => {
+        setQueue(data.queued || [])
+        setActiveRooms(data.active || [])
+      })
       .catch(() => {})
 
-  // Queue — poll when WebSocket is off or failed to connect
+  const loadRoomMessages = (roomId: string) => {
+    goGet<{ messages: ChatMsg[] }>(`/chat/rooms/${roomId}/messages`)
+      .then(data => {
+        const list = data.messages || []
+        msgsByRoom.current[roomId] = list
+        if (activeRoomRef.current === roomId) setMsgs(list)
+      })
+      .catch(() => {})
+  }
+
+  // Inbox — poll when WebSocket is off or failed to connect
   useEffect(() => {
-    refreshQueue()
+    refreshInbox()
     if (goWsEnabled() && connected) return
     if (!goWsEnabled()) setConnected(true)
     const id = setInterval(() => {
-      if (document.visibilityState !== 'hidden') refreshQueue()
+      if (document.visibilityState !== 'hidden') refreshInbox()
     }, import.meta.env.PROD ? 5000 : 3000)
     return () => clearInterval(id)
   }, [connected])
@@ -75,6 +96,10 @@ export function AdminChat() {
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       switch (data.type) {
+        case 'inbox_snapshot':
+          setQueue(data.queued || [])
+          setActiveRooms(data.active || [])
+          break
         case 'queue_snapshot':
           setQueue(data.rooms || [])
           break
@@ -89,23 +114,41 @@ export function AdminChat() {
             setQueue(prev => prev.filter(r => r.id !== data.room_id))
           }
           break
+        case 'active_add':
+          if (data.room) {
+            setActiveRooms(prev => {
+              if (prev.find(r => r.id === data.room.id)) return prev
+              return [data.room, ...prev]
+            })
+          }
+          break
+        case 'active_remove':
+          if (data.room_id) {
+            setActiveRooms(prev => prev.filter(r => r.id !== data.room_id))
+            delete msgsByRoom.current[data.room_id]
+            if (data.room_id === activeRoomRef.current) {
+              setJoined(false)
+            }
+          }
+          break
         case 'message': {
           const roomId = data.room_id || data.message?.room_id
-          if (roomId && activeRoomRef.current && roomId !== activeRoomRef.current) break
-          if (data.message) setMsgs(prev => appendMsg(prev, data.message))
+          if (!roomId || !data.message) break
+          const next = appendMsg(msgsByRoom.current[roomId] || [], data.message)
+          cacheMsgs(roomId, next)
           break
         }
         case 'room_closed': {
           const closedId = data.room_id || data.message?.room_id
           setQueue(prev => prev.filter(r => r.id !== closedId))
-          if (closedId && closedId === activeRoomRef.current) {
-            setActiveRoom(null)
-            setMsgs([])
-            setJoined(false)
-            activeRoomRef.current = null
+          setActiveRooms(prev => prev.filter(r => r.id !== closedId))
+          if (data.message && closedId) {
+            const next = appendMsg(msgsByRoom.current[closedId] || [], data.message)
+            cacheMsgs(closedId, next)
           }
-          if (data.message && closedId === activeRoomRef.current) {
-            setMsgs(prev => appendMsg(prev, data.message))
+          if (closedId === activeRoomRef.current) {
+            setJoined(false)
+            setActiveRoom(prev => prev ? { ...prev, status: 'closed' } : null)
           }
           break
         }
@@ -126,7 +169,7 @@ export function AdminChat() {
       goGet<{ messages: ChatMsg[] }>(`/chat/rooms/${roomId}/messages`, ac.signal)
         .then(data => {
           if (activeRoomRef.current === roomId && data.messages?.length) {
-            setMsgs(data.messages)
+            cacheMsgs(roomId, data.messages)
           }
         })
         .catch(() => {})
@@ -146,29 +189,46 @@ export function AdminChat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [msgs])
 
-  const joinRoom = async (room: Room) => {
-    setActiveRoom({ ...room, status: 'active' })
-    setMsgs([])
-    setJoined(false)
+  const selectRoom = (room: Room, isActive: boolean) => {
+    if (activeRoom?.id && activeRoom.id !== room.id) {
+      msgsByRoom.current[activeRoom.id] = msgs
+    }
+    setActiveRoom(room)
     activeRoomRef.current = room.id
-    setQueue(prev => prev.filter(r => r.id !== room.id))
+    setJoined(isActive)
+    const cached = msgsByRoom.current[room.id]
+    if (cached?.length) {
+      setMsgs(cached)
+    } else {
+      setMsgs([])
+      loadRoomMessages(room.id)
+    }
+  }
 
+  const joinSelectedRoom = async () => {
+    if (!activeRoom || joined || joining) return
+    const room = activeRoom
+    setJoining(true)
     try {
       const data = await goPost<{ room: Room; messages: ChatMsg[] }>(
         `/chat/admin/rooms/${room.id}/join`,
         {}
       )
-      if (activeRoomRef.current === room.id) {
-        setActiveRoom(data.room)
-        setMsgs(data.messages || [])
-        setJoined(true)
-      }
+      if (activeRoomRef.current !== room.id) return
+      setQueue(prev => prev.filter(r => r.id !== room.id))
+      setActiveRooms(prev => {
+        const rest = prev.filter(r => r.id !== room.id)
+        return [data.room, ...rest]
+      })
+      const list = data.messages || []
+      msgsByRoom.current[room.id] = list
+      setActiveRoom(data.room)
+      setMsgs(list)
+      setJoined(true)
     } catch {
-      if (activeRoomRef.current === room.id) {
-        setActiveRoom(null)
-        setJoined(false)
-        activeRoomRef.current = null
-      }
+      if (activeRoomRef.current === room.id) setJoined(false)
+    } finally {
+      setJoining(false)
     }
   }
 
@@ -185,7 +245,8 @@ export function AdminChat() {
         { content: text }
       )
       if (data.message) {
-        setMsgs(prev => appendMsg(prev, data.message))
+        const next = appendMsg(msgsByRoom.current[roomId] || [], data.message)
+        cacheMsgs(roomId, next)
       }
     } catch {
       setInput(text)
@@ -203,6 +264,8 @@ export function AdminChat() {
     } catch { /* still reset UI */ }
 
     setQueue(prev => prev.filter(r => r.id !== id))
+    setActiveRooms(prev => prev.filter(r => r.id !== id))
+    delete msgsByRoom.current[id]
     setActiveRoom(null)
     setMsgs([])
     setJoined(false)
@@ -213,7 +276,36 @@ export function AdminChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  const canSend = joined && !!activeRoom && !!input.trim() && !sending
+  const canSend = joined && !!activeRoom && activeRoom.status !== 'closed' && !!input.trim() && !sending
+  const needsJoin = !!activeRoom && activeRoom.status === 'queued' && !joined
+
+  const roomButton = (room: Room, isActive: boolean) => (
+    <button
+      key={room.id}
+      onClick={() => selectRoom(room, isActive)}
+      className={`w-full px-4 py-3 transition-colors text-left ${
+        activeRoom?.id === room.id ? 'bg-brand-50' : 'hover:bg-brand-50/60'
+      }`}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <User size={14} className="text-brand-600" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900 truncate">{room.user_name}</p>
+          <p className="text-[11px] text-gray-400 truncate">{room.user_email || 'Invité'}</p>
+        </div>
+        <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+          isActive ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+        }`}>
+          {isActive ? 'En cours' : 'En attente'}
+        </span>
+      </div>
+      <p className="text-[11px] text-gray-400 mt-1 ml-10">
+        {new Date(room.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+      </p>
+    </button>
+  )
 
   return (
     <AdminPage
@@ -236,41 +328,38 @@ export function AdminChat() {
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-13rem)]">
 
-        {/* Queue panel */}
+        {/* Inbox panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <p className="font-bold text-sm text-gray-700">File d'attente</p>
-            <span className="bg-brand-100 text-brand-700 text-xs font-bold px-2 py-0.5 rounded-full">{queue.length}</span>
+            <p className="font-bold text-sm text-gray-700">Conversations</p>
+            <span className="bg-brand-100 text-brand-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              {queue.length + activeRooms.length}
+            </span>
           </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-            {queue.length === 0 ? (
-              <div className="py-12 text-center text-gray-400">
-                <MessageCircle size={28} className="mx-auto mb-2 opacity-30" />
-                <p className="text-xs">Aucune conversation en attente</p>
-              </div>
-            ) : queue.map(room => (
-              <button
-                key={room.id}
-                onClick={() => joinRoom(room)}
-                className="w-full px-4 py-3 hover:bg-brand-50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User size={14} className="text-brand-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{room.user_name}</p>
-                    <p className="text-[11px] text-gray-400 truncate">{room.user_email || 'Invité'}</p>
-                  </div>
-                  <span className="flex-shrink-0 text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full">
-                    En attente
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-400 mt-1 ml-10">
-                  {new Date(room.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          <div className="flex-1 overflow-y-auto">
+            {activeRooms.length > 0 && (
+              <div>
+                <p className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50">
+                  Mes conversations ({activeRooms.length})
                 </p>
-              </button>
-            ))}
+                <div className="divide-y divide-gray-50">
+                  {activeRooms.map(room => roomButton(room, true))}
+                </div>
+              </div>
+            )}
+            <div>
+              <p className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wide bg-gray-50">
+                File d'attente ({queue.length})
+              </p>
+              <div className="divide-y divide-gray-50">
+                {queue.length === 0 ? (
+                  <div className="py-8 text-center text-gray-400">
+                    <MessageCircle size={24} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-xs">Aucune conversation en attente</p>
+                  </div>
+                ) : queue.map(room => roomButton(room, false))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -279,31 +368,43 @@ export function AdminChat() {
           {!activeRoom ? (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
               <MessageCircle size={40} className="mb-3 opacity-20" />
-              <p className="text-sm font-medium">Sélectionnez une conversation dans la file</p>
+              <p className="text-sm font-medium">Sélectionnez une conversation</p>
             </div>
           ) : (
             <>
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <User size={14} className="text-brand-600" />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{activeRoom.user_name}</p>
-                    <p className="text-[11px] text-gray-400">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{activeRoom.user_name}</p>
+                    <p className="text-[11px] text-gray-400 truncate">
                       {activeRoom.user_email || 'Invité'}
-                      {!joined && ' · Connexion à la conversation...'}
+                      {needsJoin && ' · Cliquez sur Rejoindre pour répondre'}
                     </p>
                   </div>
                 </div>
-                {activeRoom.status !== 'closed' && (
-                  <button
-                    onClick={closeRoom}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 font-semibold transition-colors"
-                  >
-                    <X size={14} /> Clôturer
-                  </button>
-                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {needsJoin && (
+                    <button
+                      onClick={joinSelectedRoom}
+                      disabled={joining}
+                      className="flex items-center gap-1.5 text-xs bg-brand-500 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+                    >
+                      <UserPlus size={14} />
+                      {joining ? 'Connexion...' : 'Rejoindre'}
+                    </button>
+                  )}
+                  {joined && activeRoom.status !== 'closed' && (
+                    <button
+                      onClick={closeRoom}
+                      className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 font-semibold transition-colors"
+                    >
+                      <X size={14} /> Clôturer
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -334,14 +435,18 @@ export function AdminChat() {
                 <div ref={bottomRef} />
               </div>
 
-              {activeRoom.status !== 'closed' && (
+              {activeRoom.status === 'closed' ? (
+                <div className="border-t border-gray-100 p-4 text-center text-xs text-gray-400">
+                  Conversation clôturée
+                </div>
+              ) : joined && (
                 <div className="border-t border-gray-100 p-3 flex gap-2">
                   <input
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={onKeyDown}
-                    placeholder={joined ? 'Répondre...' : 'Connexion...'}
-                    disabled={!joined || sending}
+                    placeholder="Répondre..."
+                    disabled={sending}
                     className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-400 disabled:opacity-50"
                   />
                   <button

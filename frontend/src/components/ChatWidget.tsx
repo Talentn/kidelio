@@ -33,24 +33,48 @@ export function ChatWidget() {
   const [wsLive, setWsLive] = useState(false)
   const [sending, setSending] = useState(false)
   const [position, setPosition]   = useState<number | null>(null)
+  const [roomStatus, setRoomStatus] = useState<string | null>(null)
   const wsRef    = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const pendingId = useRef(0)
+  const pollMs = import.meta.env.PROD ? 5000 : 2500
+
+  const refreshMessages = (room: string, signal?: AbortSignal) =>
+    goGet<{ messages: Msg[]; room?: { status: string }; queue_position?: number }>(
+      `/chat/rooms/${room}/messages`,
+      signal
+    )
+      .then(data => {
+        if (data.messages?.length) setMsgs(data.messages)
+        if (data.room?.status) {
+          setRoomStatus(data.room.status)
+          if (data.room.status === 'active') {
+            setPosition(null)
+          }
+          if (data.room.status === 'closed') {
+            setPosition(null)
+            sessionStorage.removeItem('chat_room_id')
+          }
+        }
+        if (typeof data.queue_position === 'number' && data.room?.status === 'queued') {
+          setPosition(data.queue_position)
+        }
+        if (data.messages?.some(m => m.sender_type === 'agent')) {
+          setPosition(null)
+          setRoomStatus('active')
+        }
+      })
+      .catch(() => {})
 
   // Restore existing session
   useEffect(() => {
     const saved = sessionStorage.getItem('chat_room_id')
-    if (saved) { setRoomId(saved); setStep('chat') }
+    if (saved) {
+      setRoomId(saved)
+      setStep('chat')
+      refreshMessages(saved)
+    }
   }, [])
-
-  const pollMs = import.meta.env.PROD ? 5000 : 2500
-
-  const refreshMessages = (room: string, signal?: AbortSignal) =>
-    goGet<{ messages: Msg[] }>(`/chat/rooms/${room}/messages`, signal)
-      .then(data => {
-        if (data.messages?.length) setMsgs(data.messages)
-      })
-      .catch(() => {})
 
   // Poll only while the chat panel is open (avoids background load on every page visit)
   useEffect(() => {
@@ -105,17 +129,21 @@ export function ChatWidget() {
         setMsgs(prev => mergeMsgs(prev, [data.message]))
       } else if (data.type === 'agent_joined') {
         setPosition(null)
+        setRoomStatus('active')
       } else if (data.type === 'queue_position') {
         setPosition(data.position)
+        setRoomStatus('queued')
       } else if (data.type === 'room_closed') {
         setMsgs(prev => mergeMsgs(prev, [data.message]))
         setPosition(null)
+        setRoomStatus('closed')
         sessionStorage.removeItem('chat_room_id')
         wsRef.current?.close()
         setTimeout(() => {
           setRoomId('')
           setStep('form')
           setMsgs([])
+          setRoomStatus(null)
         }, 2500)
       }
     }
@@ -140,6 +168,8 @@ export function ChatWidget() {
       setRoomId(res.room_id)
       setStep('chat')
       setPosition(null)
+      setRoomStatus('queued')
+      refreshMessages(res.room_id)
     } catch {
       setStartError('Impossible de démarrer le chat. Réessayez dans un instant.')
     } finally {
@@ -207,7 +237,10 @@ export function ChatWidget() {
               <p className="font-bold text-sm">Support Kidelio 🐰</p>
               <p className="text-[11px] text-white/80">
                 {step === 'form' ? 'Généralement répond en quelques minutes' :
-                  position ? `File d'attente : #${position}` : '✓ Connecté'}
+                  roomStatus === 'closed' ? 'Conversation terminée' :
+                  position ? `File d'attente : #${position}` :
+                  roomStatus === 'queued' ? 'En attente d\'un conseiller...' :
+                  '✓ Connecté'}
               </p>
             </div>
             <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white">

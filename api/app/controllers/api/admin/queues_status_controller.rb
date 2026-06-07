@@ -88,7 +88,7 @@ module Api
         return { available: false, detail: "HTTP #{res.code}" } unless res.code.to_i == 200
 
         data = JSON.parse(res.body)
-        rooms = data["rooms"] || []
+        rooms = data["queued"] || data["rooms"] || []
         {
           available: true,
           waiting_count: rooms.size,

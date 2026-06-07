@@ -114,6 +114,11 @@ func deliverCustomerMessage(roomID, content string) (*store.Message, error) {
 
 func GetMessages(w http.ResponseWriter, r *http.Request) {
 	roomID := r.PathValue("id")
+	room, err := store.GetRoom(roomID)
+	if err != nil || room == nil {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
 	msgs, err := store.GetMessages(roomID)
 	if err != nil {
 		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
@@ -122,8 +127,25 @@ func GetMessages(w http.ResponseWriter, r *http.Request) {
 	if msgs == nil {
 		msgs = []store.Message{}
 	}
+	payload := map[string]any{
+		"messages": msgs,
+		"room": map[string]any{
+			"id":     room.ID,
+			"status": room.Status,
+		},
+	}
+	if room.Status == "queued" {
+		if queued, _ := store.ListQueued(); queued != nil {
+			for i, q := range queued {
+				if q.ID == roomID {
+					payload["queue_position"] = i + 1
+					break
+				}
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"messages": msgs})
+	json.NewEncoder(w).Encode(payload)
 }
 
 // ── POST /chat/rooms/:id/messages — customer sends via HTTP (WS fallback) ───
@@ -244,6 +266,7 @@ func joinAgentRoom(roomID string, user *middleware.RailsUser) (*store.Room, []st
 	// Tell customer they're no longer waiting
 	hub.Chat.BroadcastToRoom(roomID, map[string]any{"type": "agent_joined"})
 	hub.Chat.BroadcastToAgents(map[string]any{"type": "queue_remove", "room_id": roomID})
+	hub.Chat.BroadcastToAgents(map[string]any{"type": "active_add", "room": room})
 	refreshQueue()
 	refreshQueuePositions()
 	msgs, _ := store.GetMessages(roomID)
@@ -268,6 +291,7 @@ func closeChatRoom(roomID string) error {
 	hub.Chat.BroadcastToRoom(roomID, closedPayload)
 	hub.Chat.BroadcastToAgents(closedPayload)
 	hub.Chat.BroadcastToAgents(map[string]any{"type": "queue_remove", "room_id": roomID})
+	hub.Chat.BroadcastToAgents(map[string]any{"type": "active_remove", "room_id": roomID})
 	refreshQueue()
 	refreshQueuePositions()
 	return nil
@@ -347,12 +371,16 @@ func AgentWS(w http.ResponseWriter, r *http.Request) {
 
 	go agent.Pump()
 
-	// Send current queue on connect
+	// Send current inbox on connect
 	queued, _ := store.ListQueued()
 	if queued == nil {
 		queued = []store.Room{}
 	}
-	agent.Write(map[string]any{"type": "queue_snapshot", "rooms": queued})
+	active, _ := store.ListActiveForAgent(user.ID)
+	if active == nil {
+		active = []store.Room{}
+	}
+	agent.Write(map[string]any{"type": "inbox_snapshot", "queued": queued, "active": active})
 
 	for {
 		_, raw, err := conn.ReadMessage()
@@ -475,15 +503,26 @@ func GetAdminRoom(w http.ResponseWriter, r *http.Request) {
 // ── GET /chat/admin/queue ──────────────────────────────────────────────────────
 
 func GetQueue(w http.ResponseWriter, r *http.Request) {
-	rooms, err := store.ListQueued()
+	user, ok := middleware.StaffFromRequest(w, r)
+	if !ok {
+		return
+	}
+	queued, err := store.ListQueued()
 	if err != nil {
 		log.Printf("GetQueue: %v", err)
 	}
-	if rooms == nil {
-		rooms = []store.Room{}
+	if queued == nil {
+		queued = []store.Room{}
+	}
+	active, err := store.ListActiveForAgent(user.ID)
+	if err != nil {
+		log.Printf("GetQueue active: %v", err)
+	}
+	if active == nil {
+		active = []store.Room{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"rooms": rooms})
+	json.NewEncoder(w).Encode(map[string]any{"queued": queued, "active": active})
 }
 
 func refreshQueue() {
