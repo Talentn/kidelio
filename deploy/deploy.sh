@@ -56,6 +56,12 @@ if ! grep -qE '^GO_INTERNAL_SECRET=.+$' "$DEPLOY_DIR/.env.production"; then
   echo "==> Generating GO_INTERNAL_SECRET for Rails→Go internal auth"
   echo "GO_INTERNAL_SECRET=$(openssl rand -hex 32)" >> "$DEPLOY_DIR/.env.production"
 fi
+# Puma thread pool (must match database.yml max_connections)
+if grep -qE '^RAILS_MAX_THREADS=' "$DEPLOY_DIR/.env.production"; then
+  :
+else
+  echo "RAILS_MAX_THREADS=10" >> "$DEPLOY_DIR/.env.production"
+fi
 # WebSocket (chat, live cart, favorites) — baked into frontend at build time
 if grep -qE '^VITE_ENABLE_CHAT_WS=' "$DEPLOY_DIR/.env.production"; then
   sed -i 's/^VITE_ENABLE_CHAT_WS=.*/VITE_ENABLE_CHAT_WS=true/' "$DEPLOY_DIR/.env.production"

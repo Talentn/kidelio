@@ -33,12 +33,24 @@ export function liveSessionId(): string {
   }
 }
 
+const GO_TIMEOUT_MS = 12_000
+
+async function goFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), GO_TIMEOUT_MS)
+  try {
+    return await fetch(goUrl(path), { ...init, signal: ac.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function goPost<T>(
   path: string,
   body: unknown,
   extraHeaders?: Record<string, string>,
 ): Promise<T> {
-  const res = await fetch(goUrl(path), {
+  const res = await goFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...extraHeaders },
     credentials: 'include',
@@ -54,7 +66,19 @@ export function goTrack(path: string, body: unknown) {
 }
 
 export async function goGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(goUrl(path), { credentials: 'include', signal })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), GO_TIMEOUT_MS)
+  const onAbort = () => ac.abort()
+  signal?.addEventListener('abort', onAbort)
+  try {
+    const res = await fetch(goUrl(path), {
+      credentials: 'include',
+      signal: ac.signal,
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+  }
 }

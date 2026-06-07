@@ -67,16 +67,18 @@ module Api
       def relay(go_path)
         forwarded_path = request.query_string.present? ? "#{go_path}?#{request.query_string}" : go_path
         staff = ADMIN_ACTIONS.include?(action_name.to_sym) ? Current.user : nil
+        customer = (action_name == "create_chat_room" ? Current.user : nil)
         res = GoServiceClient.forward(
           method: request.method,
           path: forwarded_path,
           body: request.raw_post.presence,
           rack_request: request,
-          staff: staff
+          staff: staff,
+          customer: customer
         )
         response.headers["Content-Type"] = res["Content-Type"] if res["Content-Type"]
         render plain: res.body, status: res.code.to_i
-      rescue Errno::ECONNREFUSED, SocketError
+      rescue Errno::ECONNREFUSED, SocketError, Net::OpenTimeout, Net::ReadTimeout, Timeout::Error
         render json: { error: "go-service unavailable" }, status: :service_unavailable
       end
     end

@@ -8,6 +8,7 @@ services:
     environment:
       - PORT=3000
       - GO_SERVICE_URL=http://go-service:3010
+      - RAILS_MAX_THREADS=10
     env_file: .env.production
     volumes:
       - ../api/storage:/rails/storage

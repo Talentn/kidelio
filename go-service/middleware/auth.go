@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
+
+var railsHTTPClient = &http.Client{Timeout: 3 * time.Second}
 
 type RailsUser struct {
 	ID    int64  `json:"id"`
@@ -96,7 +99,7 @@ func ValidateSession(r *http.Request) (*RailsUser, error) {
 	req.Header.Set("X-Forwarded-For", r.RemoteAddr)
 	req.Header.Set("X-Forwarded-Proto", "https")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := railsHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("rails unreachable: %w", err)
 	}

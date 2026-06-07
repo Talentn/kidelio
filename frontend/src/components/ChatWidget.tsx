@@ -31,9 +31,11 @@ export function ChatWidget() {
   const [msgs, setMsgs]       = useState<Msg[]>([])
   const [input, setInput]     = useState('')
   const [wsLive, setWsLive] = useState(false)
+  const [sending, setSending] = useState(false)
   const [position, setPosition]   = useState<number | null>(null)
   const wsRef    = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const pendingId = useRef(0)
 
   // Restore existing session
   useEffect(() => {
@@ -76,16 +78,25 @@ export function ChatWidget() {
     }
   }, [roomId, step, open, wsLive, pollMs])
 
-  // WebSocket only when enabled (dev or VITE_ENABLE_CHAT_WS=true); prod uses HTTP polling
+  // WebSocket only while chat panel is open (avoids hanging connections in background)
   useEffect(() => {
-    if (!roomId || !goWsEnabled()) return
+    if (!roomId || !open || !goWsEnabled()) return
     setWsLive(false)
     const ws = new WebSocket(goWsUrl(`/chat/ws/${roomId}`))
     wsRef.current = ws
+    const connectTimer = window.setTimeout(() => {
+      if (ws.readyState !== WebSocket.OPEN) ws.close()
+    }, 5000)
 
-    ws.onopen = () => setWsLive(true)
+    ws.onopen = () => {
+      window.clearTimeout(connectTimer)
+      setWsLive(true)
+    }
     ws.onerror = () => ws.close()
-    ws.onclose = () => setWsLive(false)
+    ws.onclose = () => {
+      window.clearTimeout(connectTimer)
+      setWsLive(false)
+    }
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       if (data.type === 'history') {
@@ -108,8 +119,11 @@ export function ChatWidget() {
         }, 2500)
       }
     }
-    return () => ws.close()
-  }, [roomId])
+    return () => {
+      window.clearTimeout(connectTimer)
+      ws.close()
+    }
+  }, [roomId, open])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -135,7 +149,7 @@ export function ChatWidget() {
 
   const send = async () => {
     const content = input.trim()
-    if (!content || !roomId) return
+    if (!content || !roomId || sending) return
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'message', content }))
@@ -143,12 +157,26 @@ export function ChatWidget() {
       return
     }
 
+    const tempId = `pending-${++pendingId.current}`
+    const optimistic: Msg = {
+      id: tempId,
+      sender_type: 'user',
+      sender_name: name || 'Vous',
+      content,
+      created_at: new Date().toISOString(),
+    }
+    setInput('')
+    setMsgs(prev => [...prev, optimistic])
+    setSending(true)
+
     try {
       const data = await goPost<{ message: Msg }>(`/chat/rooms/${roomId}/messages`, { content })
-      setMsgs(prev => mergeMsgs(prev, [data.message]))
-      setInput('')
+      setMsgs(prev => prev.map(m => (m.id === tempId ? data.message : m)))
     } catch {
-      // keep input so the user can retry
+      setMsgs(prev => prev.filter(m => m.id !== tempId))
+      setInput(content)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -262,7 +290,7 @@ export function ChatWidget() {
                 <button
                   type="button"
                   onClick={send}
-                  disabled={!input.trim() || !roomId}
+                  disabled={!input.trim() || !roomId || sending}
                   className="w-9 h-9 bg-brand-500 text-white rounded-xl flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors"
                 >
                   <Send size={14} />

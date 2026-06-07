@@ -43,19 +43,21 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Optional: enrich with Rails user if logged in
-	user, _ := middleware.ValidateSession(r)
-
 	room := &store.Room{
 		ID:        uuid.NewString(),
 		UserName:  body.Name,
 		UserEmail: body.Email,
 		Status:    "queued",
 	}
-	if user != nil {
-		room.UserID = &user.ID
-		room.UserName = user.Name
-		room.UserEmail = user.Email
+	// Rails forwards logged-in customer on headers (avoids Go→Rails callback deadlock).
+	if id, err := strconv.ParseInt(r.Header.Get("X-Kidelio-Customer-Id"), 10, 64); err == nil && id > 0 {
+		room.UserID = &id
+		if n := r.Header.Get("X-Kidelio-Customer-Name"); n != "" {
+			room.UserName = n
+		}
+		if e := r.Header.Get("X-Kidelio-Customer-Email"); e != "" {
+			room.UserEmail = e
+		}
 	}
 
 	if err := store.CreateRoom(room); err != nil {
