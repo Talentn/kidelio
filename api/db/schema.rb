@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -131,6 +131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
     t.string "guest_email"
     t.string "guest_name"
     t.string "guest_phone"
+    t.boolean "loyalty_counted", default: false, null: false
     t.text "notes"
     t.string "order_number", null: false
     t.string "payment_method", default: "cash", null: false
@@ -145,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
     t.decimal "total", precision: 10, scale: 3, null: false
     t.datetime "updated_at", null: false
     t.integer "user_id"
+    t.decimal "wallet_amount", precision: 10, scale: 3, default: "0.0", null: false
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
@@ -168,6 +170,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
     t.integer "product_id", null: false
     t.datetime "updated_at", null: false
     t.index ["product_id"], name: "index_product_colors_on_product_id"
+  end
+
+  create_table "product_reviews", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.integer "product_id", null: false
+    t.integer "stars", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id"
+    t.index ["product_id", "ip_address"], name: "index_product_reviews_on_product_id_and_ip_address", unique: true, where: "user_id IS NULL"
+    t.index ["product_id", "user_id"], name: "index_product_reviews_on_product_id_and_user_id", unique: true, where: "user_id IS NOT NULL"
+    t.index ["product_id"], name: "index_product_reviews_on_product_id"
+    t.index ["stars"], name: "index_product_reviews_on_stars"
+    t.index ["user_id"], name: "index_product_reviews_on_user_id"
   end
 
   create_table "products", force: :cascade do |t|
@@ -202,7 +218,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
     t.datetime "updated_at", null: false
     t.integer "usage_limit"
     t.integer "used_count", default: 0, null: false
+    t.integer "user_id"
     t.index ["code"], name: "index_promo_codes_on_code", unique: true
+    t.index ["user_id"], name: "index_promo_codes_on_user_id"
   end
 
   create_table "promo_popups", force: :cascade do |t|
@@ -227,12 +245,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
     t.string "email", null: false
     t.string "encrypted_password"
     t.integer "fidelity_points", default: 0, null: false
+    t.decimal "loyalty_spend_progress", precision: 10, scale: 3, default: "0.0", null: false
     t.string "name", null: false
     t.string "phone"
     t.string "provider"
     t.integer "role", default: 0, null: false
     t.string "uid"
     t.datetime "updated_at", null: false
+    t.decimal "wallet_balance", precision: 10, scale: 3, default: "0.0", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
   end
@@ -247,5 +267,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_01_130000) do
   add_foreign_key "orders", "users"
   add_foreign_key "product_color_sizes", "product_colors"
   add_foreign_key "product_colors", "products"
+  add_foreign_key "product_reviews", "products"
+  add_foreign_key "product_reviews", "users"
   add_foreign_key "products", "categories"
+  add_foreign_key "promo_codes", "users"
 end

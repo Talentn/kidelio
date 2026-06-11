@@ -10,6 +10,7 @@ import { useFavorites } from '../context/FavoritesContext'
 import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
 import { SEO } from '../components/SEO'
+import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
 
 type ColorSize = { size: string; stock: number }
 
@@ -38,6 +39,7 @@ type Product = {
   age_group?: string
   category?: { id: number; name: string; slug: string }
   colors?: ProductColor[]
+  rating?: ProductRating
 }
 
 export function ProductDetail() {
@@ -55,6 +57,7 @@ export function ProductDetail() {
   const [colorId, setColorId] = useState<number | null>(null)
   const [size, setSize] = useState<string | null>(null)
   const [activeImage, setActiveImage] = useState(0)
+  const [rating, setRating] = useState<ProductRating>({ average: 0, count: 0 })
 
   const { addItem } = useCart()
   const { openCart } = useUI()
@@ -73,6 +76,7 @@ export function ProductDetail() {
 
     const applyProduct = (p: Product) => {
       setProduct(p)
+      setRating(p.rating ?? { average: 0, count: 0 })
       const ordered = [...(p.colors ?? [])].sort(
         (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.id - b.id,
       )
@@ -232,6 +236,15 @@ export function ProductDetail() {
       url: `https://kideliowear.com/produits/${product.slug}`,
       seller: { '@type': 'Organization', name: 'Kidelio' },
     },
+    ...(rating.count > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: rating.average,
+        reviewCount: rating.count,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
   }
 
   return (
@@ -352,6 +365,14 @@ export function ProductDetail() {
             {Number(product.effective_price).toFixed(3)}{' '}
             <span className="text-base xs:text-lg font-bold text-brand-400">TND</span>
           </p>
+
+          {slug && (
+            <ProductStarRating
+              productSlug={slug}
+              rating={rating}
+              onRated={setRating}
+            />
+          )}
 
           {product.description && (
             <p className="text-gray-600 leading-relaxed mb-6 text-base">{product.description}</p>

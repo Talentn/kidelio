@@ -39,7 +39,9 @@ Rails.application.routes.draw do
         delete "items/:product_id", action: :remove_item
       end
 
-      resources :products, only: %i[index show], param: :id
+      resources :products, only: %i[index show], param: :id do
+        post "review", to: "product_reviews#create"
+      end
       resources :categories, only: [:index]
       get 'catalog', to: 'catalog#index', defaults: { format: :json }
       get "homepage", to: "homepage#show"

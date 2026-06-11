@@ -71,6 +71,7 @@ module Api
         }
         if detail
           json[:description] = product.description
+          json[:rating] = rating_json(product)
           json[:colors] = product.colors.map do |c|
             urls = c.images.map { |img| json_variant_url(img, size: :large) }.compact
             {
@@ -85,6 +86,15 @@ module Api
           end
         end
         json
+      end
+
+      def rating_json(product)
+        product.rating_stats.merge(user_stars: visitor_review(product)&.stars)
+      end
+
+      def visitor_review(product)
+        ProductReview.for_visitor(user: Current.user, ip: request.remote_ip)
+          .find_by(product_id: product.id)
       end
     end
   end

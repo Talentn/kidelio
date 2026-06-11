@@ -11,6 +11,7 @@ import {
   Tags,
   Boxes,
   ArrowRight,
+  Star,
 } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { useLivePoll } from "../../hooks/useLivePoll";
@@ -23,6 +24,9 @@ type Stats = {
   low_stock_products: number;
   total_products: number;
   unread_messages: number;
+  total_reviews: number;
+  average_rating: number;
+  reviews_today: number;
 };
 
 function StatCard({
@@ -146,6 +150,27 @@ export function Dashboard() {
             value={stats.unread_messages}
             icon={<Mail size={20} className="text-white" />}
             accent="bg-sky-500"
+          />
+          <StatCard
+            label="Avis aujourd'hui"
+            value={stats.reviews_today}
+            icon={<Star size={20} className="text-white" />}
+            accent="bg-amber-500"
+            to="/admin/statistiques"
+          />
+          <StatCard
+            label="Note moyenne"
+            value={stats.average_rating > 0 ? `${stats.average_rating}/5` : "—"}
+            icon={<Star size={20} className="text-white" />}
+            accent="bg-yellow-500"
+            to="/admin/statistiques"
+          />
+          <StatCard
+            label="Total avis"
+            value={stats.total_reviews}
+            icon={<Star size={20} className="text-white" />}
+            accent="bg-orange-500"
+            to="/admin/statistiques"
           />
         </div>
       ) : (

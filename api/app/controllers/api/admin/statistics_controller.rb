@@ -28,6 +28,11 @@ module Api
         revenue = revenue_orders.sum(:total).to_f
         prev_revenue = prev_revenue_orders.sum(:total).to_f
 
+        reviews = scoped_reviews(from, to)
+        prev_reviews = scoped_reviews(prev_from, prev_to)
+        reviews_count = reviews.count
+        prev_reviews_count = prev_reviews.count
+
         render json: {
           period: period,
           from: from&.to_date&.iso8601,
@@ -46,13 +51,20 @@ module Api
             refunded_orders: orders.where(status: :refunded).count,
             low_stock_products: Product.active.where("stock < ?", 5).count,
             total_products: Product.count,
-            unread_messages: ContactMessage.where(read: false).count
+            unread_messages: ContactMessage.where(read: false).count,
+            reviews_count: reviews_count,
+            average_rating: average_rating(reviews),
+            guest_reviews: reviews.where(user_id: nil).count,
+            registered_reviews: reviews.where.not(user_id: nil).count,
+            total_reviews_all_time: ProductReview.count
           },
           previous_period: {
             orders_count: prev_orders_count,
             revenue: prev_revenue,
+            reviews_count: prev_reviews_count,
             change_orders_pct: pct_change(prev_orders_count, orders_count),
-            change_revenue_pct: pct_change(prev_revenue, revenue)
+            change_revenue_pct: pct_change(prev_revenue, revenue),
+            change_reviews_pct: pct_change(prev_reviews_count, reviews_count)
           },
           revenue_by_day: time_series(revenue_orders, from, to, period),
           orders_by_status: orders_by_status(orders),
@@ -61,7 +73,11 @@ module Api
           promo_usage: {
             orders_with_promo: revenue_orders.where.not(promo_code: [nil, ""]).count,
             total_discount: revenue_orders.sum(:discount_amount).to_f
-          }
+          },
+          reviews_by_day: reviews_time_series(reviews, from, to, period),
+          reviews_by_stars: reviews_by_stars(reviews),
+          top_rated_products: top_rated_products,
+          lowest_rated_products: lowest_rated_products
         }
       end
 
@@ -170,6 +186,86 @@ module Api
           .order("orders_count DESC")
           .limit(8)
           .map { |row| { governorate: row.shipping_governorate, orders: row.orders_count, revenue: row.revenue.to_f } }
+      end
+
+      def scoped_reviews(from, to)
+        scope = ProductReview.all
+        scope = scope.where("product_reviews.created_at >= ?", from) if from
+        scope = scope.where("product_reviews.created_at <= ?", to) if to
+        scope
+      end
+
+      def average_rating(reviews)
+        reviews.average(:stars)&.to_f&.round(1) || 0
+      end
+
+      def review_day_expr
+        sqlite? ? "date(product_reviews.created_at)" : "DATE(product_reviews.created_at)"
+      end
+
+      def review_month_expr
+        sqlite? ? "strftime('%Y-%m', product_reviews.created_at)" : "TO_CHAR(product_reviews.created_at, 'YYYY-MM')"
+      end
+
+      def reviews_time_series(reviews, from, to, period)
+        if period == "all"
+          counts = reviews.group(review_month_expr).count
+          keys = counts.keys.sort
+          return keys.map { |key| { date: "#{key}-01", reviews: counts[key] || 0 } }
+        end
+        return [] unless from
+
+        counts = reviews.group(review_day_expr).count
+        start_date = from.to_date
+        end_date = to.to_date
+        (start_date..end_date).map do |date|
+          key = date.iso8601
+          { date: key, reviews: counts[key] || 0 }
+        end
+      end
+
+      def reviews_by_stars(reviews)
+        counts = reviews.group(:stars).count
+        (1..5).map { |stars| { stars: stars, count: counts[stars] || 0 } }
+      end
+
+      def rated_products_scope
+        ProductReview
+          .joins(:product)
+          .group("products.id", "products.name", "products.slug")
+          .select(
+            "products.id AS product_id",
+            "products.name AS product_name",
+            "products.slug AS product_slug",
+            "AVG(product_reviews.stars) AS average_rating",
+            "COUNT(product_reviews.id) AS reviews_count"
+          )
+          .having("COUNT(product_reviews.id) > 0")
+      end
+
+      def top_rated_products
+        rated_products_scope
+          .order("average_rating DESC, reviews_count DESC")
+          .limit(8)
+          .map { |row| rated_product_row(row) }
+      end
+
+      def lowest_rated_products
+        rated_products_scope
+          .having("COUNT(product_reviews.id) >= 2")
+          .order("average_rating ASC, reviews_count DESC")
+          .limit(8)
+          .map { |row| rated_product_row(row) }
+      end
+
+      def rated_product_row(row)
+        {
+          product_id: row.product_id,
+          product_name: row.product_name,
+          product_slug: row.product_slug,
+          average_rating: row.average_rating.to_f.round(1),
+          reviews_count: row.reviews_count.to_i
+        }
       end
     end
   end

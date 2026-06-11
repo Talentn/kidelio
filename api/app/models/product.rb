@@ -4,6 +4,7 @@ class Product < ApplicationRecord
 
   belongs_to :category, optional: true
   has_many :order_items, dependent: :nullify
+  has_many :reviews, class_name: "ProductReview", dependent: :destroy
   has_many :colors, -> { ordered }, class_name: "ProductColor", dependent: :destroy
   has_many_attached :images
 
@@ -28,6 +29,11 @@ class Product < ApplicationRecord
   end
 
   # Catalog cover: product images, else the first color (by position) gallery.
+  def rating_stats
+    avg, count = reviews.pick(Arel.sql("AVG(stars)"), Arel.sql("COUNT(*)"))
+    { average: avg&.to_f&.round(1) || 0, count: count.to_i }
+  end
+
   def listing_image_attachments
     return images.to_a if images.attached?
 

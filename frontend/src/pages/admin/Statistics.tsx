@@ -10,6 +10,7 @@ import {
   Truck,
   MapPin,
   Tag,
+  Star,
 } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { orderStatusLabel } from "../../lib/orderStatus";
@@ -45,18 +46,41 @@ type Statistics = {
     low_stock_products: number;
     total_products: number;
     unread_messages: number;
+    reviews_count: number;
+    average_rating: number;
+    guest_reviews: number;
+    registered_reviews: number;
+    total_reviews_all_time: number;
   };
   previous_period: {
     orders_count: number;
     revenue: number;
+    reviews_count: number;
     change_orders_pct: number | null;
     change_revenue_pct: number | null;
+    change_reviews_pct: number | null;
   };
   revenue_by_day: { date: string; orders: number; revenue: number }[];
   orders_by_status: { status: string; count: number }[];
   top_products: { product_name: string; quantity: number; revenue: number }[];
   top_governorates: { governorate: string; orders: number; revenue: number }[];
   promo_usage: { orders_with_promo: number; total_discount: number };
+  reviews_by_day: { date: string; reviews: number }[];
+  reviews_by_stars: { stars: number; count: number }[];
+  top_rated_products: {
+    product_id: number;
+    product_name: string;
+    product_slug: string;
+    average_rating: number;
+    reviews_count: number;
+  }[];
+  lowest_rated_products: {
+    product_id: number;
+    product_name: string;
+    product_slug: string;
+    average_rating: number;
+    reviews_count: number;
+  }[];
 };
 
 function formatTND(value: number) {
@@ -116,6 +140,50 @@ function SummaryCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function DayBarChart({
+  data,
+  valueKey,
+  formatValue,
+}: {
+  data: { date: string; [key: string]: string | number }[];
+  valueKey: string;
+  formatValue?: (v: number) => string;
+}) {
+  const max = useMemo(
+    () => Math.max(...data.map((d) => Number(d[valueKey])), 1),
+    [data, valueKey],
+  );
+
+  if (!data.length) {
+    return <p className="text-slate-400 text-sm text-center py-8">Aucune donnée pour cette période.</p>;
+  }
+
+  const showEvery = data.length > 14 ? Math.ceil(data.length / 7) : 1;
+
+  return (
+    <div className="flex items-end gap-1 h-48 pt-4">
+      {data.map((d, i) => {
+        const val = Number(d[valueKey]);
+        const height = Math.max((val / max) * 100, val > 0 ? 4 : 0);
+        return (
+          <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
+            <div
+              className="w-full bg-amber-400 rounded-t-md transition-all hover:bg-amber-500 min-h-[2px]"
+              style={{ height: `${height}%` }}
+              title={`${formatDate(d.date)}: ${formatValue ? formatValue(val) : val}`}
+            />
+            {i % showEvery === 0 && (
+              <span className="text-[9px] text-slate-400 truncate w-full text-center leading-none">
+                {formatDate(d.date)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -228,6 +296,14 @@ export function Statistics() {
     [data]
   );
 
+  const starItems = useMemo(
+    () =>
+      (data?.reviews_by_stars ?? [])
+        .filter((s) => s.count > 0)
+        .map((s) => ({ label: `${s.stars} étoile${s.stars > 1 ? "s" : ""}`, count: s.count })),
+    [data]
+  );
+
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? period;
 
   return (
@@ -326,6 +402,19 @@ export function Statistics() {
               icon={<Tag size={18} className="text-white" />}
               accent="bg-teal-500"
             />
+            <SummaryCard
+              label="Avis clients"
+              value={data.summary.reviews_count}
+              icon={<Star size={18} className="text-white" />}
+              accent="bg-amber-500"
+              change={data.previous_period.change_reviews_pct}
+            />
+            <SummaryCard
+              label="Note moyenne"
+              value={data.summary.average_rating > 0 ? `${data.summary.average_rating}/5` : "—"}
+              icon={<Star size={18} className="text-white" />}
+              accent="bg-yellow-500"
+            />
           </div>
 
           {/* Revenue chart */}
@@ -355,6 +444,91 @@ export function Statistics() {
                 labelKey="label"
                 valueKey="count"
               />
+            </Card>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {data.reviews_by_day.some((d) => d.reviews > 0) && (
+              <Card className="p-5">
+                <h2 className="font-bold text-slate-900 mb-1">Avis par jour</h2>
+                <p className="text-sm text-slate-500 mb-4">Nouvelles notes sur la période</p>
+                <DayBarChart data={data.reviews_by_day} valueKey="reviews" />
+              </Card>
+            )}
+
+            <Card className="p-5">
+              <h2 className="font-bold text-slate-900 mb-4">Répartition des notes</h2>
+              {starItems.length > 0 ? (
+                <HorizontalBars
+                  items={starItems.map((s) => ({ label: s.label, count: s.count }))}
+                  labelKey="label"
+                  valueKey="count"
+                />
+              ) : (
+                <p className="text-slate-400 text-sm">Aucun avis sur cette période.</p>
+              )}
+            </Card>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="p-5">
+              <h2 className="font-bold text-slate-900 mb-4">Mieux notés</h2>
+              {data.top_rated_products.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500 border-b border-slate-100">
+                        <th className="pb-2 font-semibold">Produit</th>
+                        <th className="pb-2 font-semibold text-right">Note</th>
+                        <th className="pb-2 font-semibold text-right">Avis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.top_rated_products.map((p) => (
+                        <tr key={p.product_id} className="border-b border-slate-50 last:border-0">
+                          <td className="py-2.5 font-medium text-slate-800 pr-2">{p.product_name}</td>
+                          <td className="py-2.5 text-right font-semibold text-amber-600">
+                            {p.average_rating}/5
+                          </td>
+                          <td className="py-2.5 text-right text-slate-600">{p.reviews_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-slate-400 text-sm">Aucun avis pour le moment.</p>
+              )}
+            </Card>
+
+            <Card className="p-5">
+              <h2 className="font-bold text-slate-900 mb-4">Moins bien notés</h2>
+              {data.lowest_rated_products.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500 border-b border-slate-100">
+                        <th className="pb-2 font-semibold">Produit</th>
+                        <th className="pb-2 font-semibold text-right">Note</th>
+                        <th className="pb-2 font-semibold text-right">Avis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.lowest_rated_products.map((p) => (
+                        <tr key={p.product_id} className="border-b border-slate-50 last:border-0">
+                          <td className="py-2.5 font-medium text-slate-800 pr-2">{p.product_name}</td>
+                          <td className="py-2.5 text-right font-semibold text-amber-600">
+                            {p.average_rating}/5
+                          </td>
+                          <td className="py-2.5 text-right text-slate-600">{p.reviews_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-slate-400 text-sm">Pas assez d&apos;avis (minimum 2 par produit).</p>
+              )}
             </Card>
           </div>
 
@@ -419,6 +593,18 @@ export function Statistics() {
               <div>
                 <p className="text-slate-500">Commandes clients</p>
                 <p className="text-xl font-bold text-slate-900 mt-0.5">{data.summary.registered_orders}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Avis invités (IP)</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{data.summary.guest_reviews}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Avis clients connectés</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{data.summary.registered_reviews}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">Total avis (toutes périodes)</p>
+                <p className="text-xl font-bold text-amber-600 mt-0.5">{data.summary.total_reviews_all_time}</p>
               </div>
               <div>
                 <p className="text-slate-500">Annulées</p>
