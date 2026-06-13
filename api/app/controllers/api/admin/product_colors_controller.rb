@@ -10,7 +10,7 @@ module Api
         if color.save
           attach_images(color)
           invalidate_catalog_cache
-          render json: { color: color_json(color) }, status: :created
+          render json: { color: color_json(color.reload) }, status: :created
         else
           render json: { errors: color.errors.full_messages }, status: :unprocessable_entity
         end
@@ -20,7 +20,7 @@ module Api
         if @color.update(color_params)
           attach_images(@color)
           invalidate_catalog_cache
-          render json: { color: color_json(@color) }
+          render json: { color: color_json(@color.reload) }
         else
           render json: { errors: @color.errors.full_messages }, status: :unprocessable_entity
         end
@@ -78,12 +78,19 @@ module Api
       end
 
       def attach_images(color)
-        return unless params[:images].present?
+        uploads = image_uploads
+        return if uploads.empty?
 
-        Array(params[:images]).reject(&:blank?).each do |file|
+        uploads.each do |file|
           ImageOptimizer.attach_optimized(color, :images, file)
         end
         ActivityLogger.log_media(color, attachment: :images, detail: "Images couleur ajoutées")
+      end
+
+      def image_uploads
+        list = params[:images]
+        list = params["images[]"] if list.blank?
+        Array(list).reject(&:blank?)
       end
 
       def color_json(color)

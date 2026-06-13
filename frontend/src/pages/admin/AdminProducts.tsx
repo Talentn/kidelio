@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Minus,
@@ -117,6 +117,10 @@ function ProductForm({
   const [parentCategoryId, setParentCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
   const filePreviews = useFilePreviews(files);
+  const colorActionsRef = useRef<{
+    hasPendingPhotos: () => boolean;
+    submitPending: () => Promise<ProductColor | null>;
+  } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -215,10 +219,25 @@ function ProductForm({
       let saved: Product;
 
       if (current) {
+        let addedColor: ProductColor | null = null;
+        if (colorActionsRef.current?.hasPendingPhotos()) {
+          addedColor = await colorActionsRef.current.submitPending();
+          if (!addedColor) {
+            setSaving(false);
+            return;
+          }
+        }
+
         const d = await apiAdmin<{ product: Product }>(`/products/${current.id}`, { method: "PATCH", body: fd });
         saved = d.product;
+        if (addedColor) {
+          const merged = [...(saved.colors ?? []), addedColor].sort(
+            (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.id - b.id,
+          );
+          saved = { ...saved, colors: merged };
+        }
         setFiles([]);
-        notify("Produit mis à jour");
+        notify(addedColor ? "Produit et photos enregistrés" : "Produit mis à jour");
       } else {
         const d = await apiAdmin<{ product: Product }>("/products", { method: "POST", body: fd });
         saved = d.product;
@@ -457,6 +476,7 @@ function ProductForm({
                 colors={current.colors ?? []}
                 globalSizes={globalSizes}
                 onChange={(colors) => setCurrent({ ...current, colors })}
+                registerActions={(actions) => { colorActionsRef.current = actions; }}
               />
             </div>
           )}
@@ -502,11 +522,16 @@ function ColorManager({
   colors,
   globalSizes,
   onChange,
+  registerActions,
 }: {
   productId: number;
   colors: ProductColor[];
   globalSizes: SizeAttr[];
   onChange: (colors: ProductColor[]) => void;
+  registerActions?: (actions: {
+    hasPendingPhotos: () => boolean;
+    submitPending: () => Promise<ProductColor | null>;
+  }) => void;
 }) {
   const { notify } = useToast();
   const [name, setName] = useState("");
@@ -547,23 +572,31 @@ function ColorManager({
     }
   };
 
-  const addColor = async () => {
-    if (!name.trim()) { notify("Indiquez un nom de couleur", "error"); return; }
-    if (newFiles.length === 0) { notify("Ajoutez au moins une photo pour cette couleur", "error"); return; }
+  const addColor = async (): Promise<ProductColor | null> => {
+    if (newFiles.length === 0) { notify("Ajoutez au moins une photo pour cette couleur", "error"); return null; }
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("name", name.trim());
+      fd.append("name", name.trim() || "Standard");
       fd.append("hex", hex);
       newFiles.forEach((f) => fd.append("images[]", f));
       const d = await apiAdmin<{ color: ProductColor }>(`/products/${productId}/colors`, { method: "POST", body: fd });
       onChange([...colors, d.color].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
       setName(""); setHex("#e8b4bc"); setNewFiles([]);
       notify("Couleur ajoutée");
+      return d.color;
     } catch (err: unknown) {
       notify(err instanceof Error ? err.message : "Erreur", "error");
+      return null;
     } finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    registerActions?.({
+      hasPendingPhotos: () => newFiles.length > 0,
+      submitPending: () => addColor(),
+    });
+  });
 
   const addImages = async (colorId: number, files: File[]) => {
     if (files.length === 0) return;
@@ -675,7 +708,20 @@ function ColorManager({
       {/* Add new color */}
       <div className="rounded-xl bg-slate-50 border border-dashed border-slate-200 p-3">
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nouvelle couleur</p>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+        {newFiles.length > 0 && (
+          <p className="text-xs text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2 mb-3">
+            Photos sélectionnées — cliquez <strong>Ajouter</strong> ou <strong>Enregistrer les modifications</strong> pour les téléverser.
+          </p>
+        )}
+        <div
+          className="flex flex-col sm:flex-row gap-3 sm:items-end"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void addColor();
+            }
+          }}
+        >
           <div className="flex-1">
             <label className="input-label">Nom</label>
             <input className="input" placeholder="Ex: Rose poudré" value={name} onChange={(e) => setName(e.target.value)} />
@@ -692,7 +738,7 @@ function ColorManager({
               <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => setNewFiles(Array.from(e.target.files ?? []))} />
             </label>
           </div>
-          <button type="button" onClick={addColor} disabled={busy} className="btn-primary btn-sm whitespace-nowrap">
+          <button type="button" onClick={() => void addColor()} disabled={busy} className="btn-primary btn-sm whitespace-nowrap">
             <Plus size={15} /> Ajouter
           </button>
         </div>
