@@ -13,7 +13,7 @@ function SizeRow({
 }: {
   size: SizeAttr;
   onSaved: (s: SizeAttr) => void;
-  onDelete: (id: number) => void;
+  onDelete: (size: SizeAttr) => void;
 }) {
   const { notify }          = useToast();
   const [editing, setEdit]  = useState(false);
@@ -75,7 +75,7 @@ function SizeRow({
             <button type="button" onClick={() => setEdit(true)} className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" aria-label="Modifier">
               <Pencil size={14} />
             </button>
-            <button type="button" onClick={() => onDelete(size.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" aria-label="Supprimer">
+            <button type="button" onClick={() => onDelete(size)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" aria-label="Supprimer">
               <Trash2 size={14} />
             </button>
           </div>
@@ -124,7 +124,7 @@ export function AdminAttributes() {
     setSizes((ss) => ss.map((s) => s.id === updated.id ? updated : s).sort((a, b) => a.position - b.position || a.name.localeCompare(b.name)));
 
   const confirmDelete = async () => {
-    if (!toDelete) return;
+    if (!toDelete?.id) return;
     try {
       await apiAdmin(`/size-attributes/${toDelete.id}`, { method: "DELETE" });
       setSizes((ss) => ss.filter((s) => s.id !== toDelete.id));
