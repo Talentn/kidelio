@@ -101,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
+    // Wipe any cache from a previous (anonymous or other) session.
+    invalidateCache();
     setAndCache(data.user);
     broadcast({ type: "auth", action: "login" });
     return data.user;
@@ -111,12 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    invalidateCache();
     setAndCache(data.user);
     broadcast({ type: "auth", action: "login" });
   };
 
   const logout = async () => {
     await api("/auth/logout", { method: "DELETE" });
+    // Clear all cached per-user data (cart, addresses, orders, …) so the next
+    // user can't see the previous session's data.
+    invalidateCache();
     setAndCache(null);
     broadcast({ type: "auth", action: "logout" });
   };

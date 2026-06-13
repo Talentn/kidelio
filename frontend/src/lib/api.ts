@@ -142,6 +142,9 @@ function request<T>(url: string, options: RequestInit = {}): Promise<T> {
         .then((data) => { cacheSet(url, data); return data; })
         .finally(() => inflight.delete(url));
       inflight.set(url, promise);
+      // The triggering caller gets stale data immediately, so swallow background
+      // refresh errors here to avoid an unhandled promise rejection.
+      promise.catch(() => {});
       return Promise.resolve(stale.data as T);
     }
 

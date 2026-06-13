@@ -10,7 +10,9 @@ class OrderCreator
     items = @params[:items] || []
     raise Error, "Panier vide" if items.empty?
 
-    products = Product.where(id: items.map { |i| i[:product_id] }).index_by(&:id)
+    products = Product.where(id: items.map { |i| i[:product_id] })
+                      .includes(colors: :sizes)
+                      .index_by(&:id)
     subtotal = 0.to_d
     line_items = []
 
@@ -19,18 +21,24 @@ class OrderCreator
       raise Error, "Produit introuvable" unless product&.active?
       qty = item[:quantity].to_i
       raise Error, "Quantité invalide" if qty < 1
-      raise Error, "Stock insuffisant pour #{product.name}" if product.stock < qty
+
+      color       = resolve_color(product, item[:color_label])
+      size_record = resolve_size(color, item[:size_label])
+      available   = available_stock(product, color, size_record)
+      raise Error, "Stock insuffisant pour #{product.name}" if available < qty
 
       unit = product.effective_price
       subtotal += unit * qty
       line_items << {
-        product: product,
+        product:      product,
+        color:        color,
+        size_record:  size_record,
         product_name: product.name,
         product_slug: product.slug,
-        unit_price: unit,
-        quantity: qty,
-        size_label: item[:size_label],
-        color_label: item[:color_label]
+        unit_price:   unit,
+        quantity:     qty,
+        size_label:   item[:size_label],
+        color_label:  item[:color_label]
       }
     end
 
@@ -73,9 +81,16 @@ class OrderCreator
       )
 
       line_items.each do |li|
-        product = li[:product]
-        product.update!(stock: product.stock - li[:quantity])
-        order.order_items.create!(li.except(:product))
+        decrement_stock!(li[:product], li[:color], li[:size_record], li[:quantity])
+        order.order_items.create!(
+          product:      li[:product],
+          product_name: li[:product_name],
+          product_slug: li[:product_slug],
+          unit_price:   li[:unit_price],
+          quantity:     li[:quantity],
+          size_label:   li[:size_label],
+          color_label:  li[:color_label]
+        )
       end
 
       if promo_code_str
@@ -89,6 +104,45 @@ class OrderCreator
   end
 
   private
+
+  # ── Variant resolution — mirrors CartManager so cart and checkout agree ─────
+
+  def resolve_color(product, color_label)
+    return nil if color_label.blank?
+    product.colors.find { |c| c.name == color_label }
+  end
+
+  def resolve_size(color, size_label)
+    return nil unless color && size_label.present?
+    color.sizes.find { |s| s.size == size_label }
+  end
+
+  # Available stock for the chosen variant, falling back to the base product stock
+  # when the product has no color/size breakdown (same logic as CartManager#stock_for).
+  def available_stock(product, color, size_record)
+    return size_record.stock if size_record
+    if color
+      total = color.total_stock
+      return total unless total.nil?
+    end
+    product.stock
+  end
+
+  def decrement_stock!(product, color, size_record, qty)
+    if size_record
+      size_record.update!(stock: [size_record.stock - qty, 0].max)
+    elsif color&.sizes&.any?
+      remaining = qty
+      color.sizes.ordered.each do |s|
+        break if remaining <= 0
+        take = [s.stock, remaining].min
+        s.update!(stock: s.stock - take) if take.positive?
+        remaining -= take
+      end
+    else
+      product.update!(stock: [product.stock - qty, 0].max)
+    end
+  end
 
   def wallet_amount_to_apply(subtotal, promo_discount)
     return 0.to_d unless @user

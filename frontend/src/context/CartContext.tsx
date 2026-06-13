@@ -3,6 +3,7 @@ import { apiV1, peekCacheV1 } from "../lib/api";
 import { broadcast, onBroadcast } from "../lib/broadcast";
 import { goWsUrl, goWsEnabled, goTrack } from "../lib/goApi";
 import { useCartToast } from "./CartToastContext";
+import { useAuth } from "./AuthContext";
 
 export type CartItem = {
   productId: number;
@@ -99,6 +100,7 @@ function initialItems(): CartItem[] {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCartToast()
+  const { user } = useAuth()
   const [items, setItemsState] = useState<CartItem[]>(initialItems);
   const [loading, setLoading] = useState(() => initialItems().length === 0 && !peekCacheV1("/cart"));
 
@@ -121,6 +123,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // When the logged-in identity changes in THIS tab (login/logout), the
+  // cross-tab broadcast doesn't fire locally — so resync the cart from the
+  // server (which is now scoped to the new session) and drop stale cache.
+  const prevUserId = useRef<number | null>(user?.id ?? null);
+  useEffect(() => {
+    const currentId = user?.id ?? null;
+    if (prevUserId.current !== currentId) {
+      prevUserId.current = currentId;
+      try { localStorage.removeItem(CART_CACHE_KEY); } catch { /* ignore */ }
+      refresh();
+    }
+  }, [user, refresh]);
 
   useEffect(() => {
     return onBroadcast((event) => {
