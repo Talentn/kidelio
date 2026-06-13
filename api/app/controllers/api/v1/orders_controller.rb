@@ -6,7 +6,8 @@ module Api
       skip_before_action :verify_authenticity_token, only: :create
 
       def create
-        payload = order_params.to_h.symbolize_keys
+        payload = order_params.to_h.deep_symbolize_keys
+        payload[:items] = normalize_items(payload[:items]) if payload[:items].present?
         payload[:items] = cart_items_payload if payload[:items].blank?
 
         if payload[:address_id].present? && Current.user
@@ -89,6 +90,13 @@ module Api
             size_label: line.size_label,
             color_label: line.color_label
           }
+        end
+      end
+
+      def normalize_items(items)
+        items.map do |item|
+          h = item.respond_to?(:to_unsafe_h) ? item.to_unsafe_h : item.to_h
+          h.symbolize_keys
         end
       end
     end

@@ -24,7 +24,7 @@ class OrderCreator
 
       color       = resolve_color(product, item[:color_label])
       size_record = resolve_size(color, item[:size_label])
-      available   = available_stock(product, color, size_record)
+      available   = available_stock(product, color, size_record, item[:size_label])
       raise Error, "Stock insuffisant pour #{product.name}" if available < qty
 
       unit = product.effective_price
@@ -119,8 +119,11 @@ class OrderCreator
 
   # Available stock for the chosen variant, falling back to the base product stock
   # when the product has no color/size breakdown (same logic as CartManager#stock_for).
-  def available_stock(product, color, size_record)
-    return size_record.stock if size_record
+  def available_stock(product, color, size_record, size_label = nil)
+    if size_label.present?
+      return size_record.stock if size_record
+      return 0 # size requested but missing on this color — matches cart behaviour
+    end
     if color
       total = color.total_stock
       return total unless total.nil?
