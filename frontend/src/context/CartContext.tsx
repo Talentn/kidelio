@@ -112,7 +112,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const data = await apiV1<CartResponse>("/cart");
       setItems(mapItems(data.items));
     } catch {
-      if (!readCartCache()) setItems([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }

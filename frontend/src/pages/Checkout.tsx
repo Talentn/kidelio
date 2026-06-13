@@ -41,7 +41,7 @@ function FieldGroup({ title, icon, children }: { title: string; icon: React.Reac
 }
 
 export function Checkout() {
-  const { items, total, count, clear } = useCart()
+  const { items, total, count, clear, refresh } = useCart()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [promo, setPromo] = useState('')
@@ -67,6 +67,11 @@ export function Checkout() {
   const [streetAddress, setStreetAddress] = useState('')
 
   const walletBalance = Number(user?.wallet_balance ?? 0)
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
   const walletDiscount = useWallet
     ? Math.min(walletBalance, Math.max(total - discount, 0))
     : 0
@@ -158,6 +163,12 @@ export function Checkout() {
       promo_code: promo || undefined,
       payment_method: 'cash',
       use_wallet: useWallet && walletDiscount > 0,
+      items: items.map((i) => ({
+        product_id: i.productId,
+        quantity: i.quantity,
+        size_label: i.sizeLabel,
+        color_label: i.colorLabel,
+      })),
     }
 
     if (user && addressMode === 'saved' && selectedAddressId) {
