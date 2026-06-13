@@ -475,6 +475,7 @@ function ProductForm({
                 productId={current.id}
                 colors={current.colors ?? []}
                 globalSizes={globalSizes}
+                productStock={Number(form.stock) || 0}
                 onChange={(colors) => setCurrent({ ...current, colors })}
                 registerActions={(actions) => { colorActionsRef.current = actions; }}
               />
@@ -521,12 +522,14 @@ function ColorManager({
   productId,
   colors,
   globalSizes,
+  productStock,
   onChange,
   registerActions,
 }: {
   productId: number;
   colors: ProductColor[];
   globalSizes: SizeAttr[];
+  productStock: number;
   onChange: (colors: ProductColor[]) => void;
   registerActions?: (actions: {
     hasPendingPhotos: () => boolean;
@@ -694,6 +697,7 @@ function ColorManager({
           orderTotal={sortedColors.length}
           busy={busy}
           globalSizes={globalSizes}
+          productStock={productStock}
           onMoveUp={() => moveColor(c.id, "up")}
           onMoveDown={() => moveColor(c.id, "down")}
           onDeleteColor={() => deleteColor(c.id)}
@@ -750,7 +754,7 @@ function ColorManager({
 
 /* ── Single color card (images + sizes from global attributes) ── */
 function ColorCard({
-  color, orderIndex, orderTotal, busy, globalSizes,
+  color, orderIndex, orderTotal, busy, globalSizes, productStock,
   onMoveUp, onMoveDown,
   onDeleteColor, onAddImages, onRemoveImage,
   onAddSize, onUpdateSizeStock, onDeleteSize,
@@ -760,6 +764,7 @@ function ColorCard({
   orderTotal: number;
   busy: boolean;
   globalSizes: SizeAttr[];
+  productStock: number;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDeleteColor: () => void;
@@ -785,7 +790,12 @@ function ColorCard({
     if (!isNaN(v) && v >= 0) onUpdateSizeStock(sizeId, v);
   };
 
-  const totalStock = (color.sizes ?? []).reduce((sum, s) => sum + s.stock, 0);
+  // When a color has no sizes, its sellable stock falls back to the product's
+  // general stock (same rule the cart & checkout use), so show that instead of 0.
+  const hasSizes = (color.sizes ?? []).length > 0;
+  const totalStock = hasSizes
+    ? (color.sizes ?? []).reduce((sum, s) => sum + s.stock, 0)
+    : productStock;
 
   return (
     <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -812,7 +822,7 @@ function ColorCard({
           <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
             totalStock === 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"
           }`}>
-            {totalStock} en stock
+            {totalStock} en stock{!hasSizes ? " (général)" : ""}
           </span>
         </div>
         <button type="button" onClick={onDeleteColor} disabled={busy}
