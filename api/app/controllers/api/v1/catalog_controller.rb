@@ -81,10 +81,7 @@ module Api
         attachment = attachments.first
         return nil unless attachment.blob
 
-        Rails.application.routes.url_helpers.rails_blob_url(
-          attachment.blob,
-          host: ENV.fetch("API_URL", "http://localhost:3001")
-        )
+        rails_blob_url(attachment, **blob_url_options)
       rescue StandardError
         nil
       end
@@ -111,10 +108,7 @@ module Api
 
         attachments.filter_map do |att|
           next unless att.blob
-          Rails.application.routes.url_helpers.rails_blob_url(
-            att.blob,
-            host: ENV.fetch("API_URL", "http://localhost:3001")
-          )
+          rails_blob_url(att, **blob_url_options)
         rescue StandardError
           nil
         end

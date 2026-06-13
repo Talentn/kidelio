@@ -92,6 +92,22 @@ class ApplicationController < ActionController::Base
     Current.user = nil
   end
 
+  # Absolute blob URLs for JSON APIs (admin + storefront). Relative /rails/... paths
+  # break when the SPA is served from a different host than the API.
+  def blob_url_options
+    @blob_url_options ||= begin
+      base = ENV["API_URL"].presence || ENV["SITE_URL"].presence
+      if base
+        uri = URI.parse(base)
+        opts = { host: uri.host, protocol: uri.scheme || "https" }
+        opts[:port] = uri.port if uri.port && ![ 80, 443 ].include?(uri.port)
+        opts
+      else
+        { host: request.host, protocol: request.protocol.delete_suffix("://") }
+      end
+    end
+  end
+
   # Returns a raw blob URL (used for admin uploads, non-image files).
   def json_image_url(attachment)
     return nil if attachment.nil?
@@ -100,7 +116,7 @@ class ApplicationController < ActionController::Base
       return nil unless attachment.attached?
     end
 
-    rails_blob_path(attachment, only_path: true)
+    rails_blob_url(attachment, **blob_url_options)
   end
 
   # Returns a resized WebP variant URL for storefront images.
@@ -125,7 +141,7 @@ class ApplicationController < ActionController::Base
     # Only process image content types
     content_type = attachment.respond_to?(:content_type) ? attachment.content_type : ""
     unless content_type.to_s.start_with?("image/")
-      return rails_blob_path(attachment, only_path: true)
+      return rails_blob_url(attachment, **blob_url_options)
     end
 
     dims = VARIANT_SIZES.fetch(size, VARIANT_SIZES[:medium])
@@ -134,9 +150,9 @@ class ApplicationController < ActionController::Base
       format: :webp,
       saver: { quality: 82 }
     )
-    rails_representation_path(variant, only_path: true)
+    rails_representation_url(variant, **blob_url_options)
   rescue StandardError
     # If variant processing fails (unsupported format, etc.), serve the original
-    rails_blob_path(attachment, only_path: true)
+    rails_blob_url(attachment, **blob_url_options)
   end
 end

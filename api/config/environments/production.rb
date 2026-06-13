@@ -67,6 +67,18 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "kideliowear.com", protocol: "https" }
 
+  config.active_storage.default_url_options = { host: "kideliowear.com", protocol: "https" }
+  config.after_initialize do
+    if ENV["SITE_URL"].present?
+      uri = URI.parse(ENV["SITE_URL"])
+      url = { host: uri.host, protocol: uri.scheme || "https" }
+      url[:port] = uri.port if uri.port && ![ 80, 443 ].include?(uri.port)
+      Rails.application.routes.default_url_options = url
+      Rails.application.config.action_controller.default_url_options = url
+      Rails.application.config.active_storage.default_url_options = url
+    end
+  end
+
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
   # config.action_mailer.smtp_settings = {
   #   user_name: Rails.application.credentials.dig(:smtp, :user_name),

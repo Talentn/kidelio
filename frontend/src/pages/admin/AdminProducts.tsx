@@ -62,6 +62,34 @@ function slugify(s: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function useFilePreviews(files: File[]) {
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    const urls = files.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [files]);
+
+  return previews;
+}
+
+function FilePreviewGrid({ urls }: { urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="flex gap-2 flex-wrap mt-3">
+      {urls.map((url, i) => (
+        <img
+          key={url}
+          src={url}
+          alt={`Aperçu ${i + 1}`}
+          className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ── Product form modal ── */
 function ProductForm({
   open,
@@ -88,6 +116,7 @@ function ProductForm({
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [parentCategoryId, setParentCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
+  const filePreviews = useFilePreviews(files);
 
   const [form, setForm] = useState({
     name: "",
@@ -368,6 +397,7 @@ function ProductForm({
                     onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
                   />
                 </label>
+                <FilePreviewGrid urls={filePreviews} />
               </div>
 
               {globalSizes.length > 0 && (
@@ -483,6 +513,7 @@ function ColorManager({
   const [hex, setHex] = useState("#e8b4bc");
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const newFilePreviews = useFilePreviews(newFiles);
 
   const replaceColor = (color: ProductColor) =>
     onChange(colors.map((c) => (c.id === color.id ? color : c)));
@@ -665,6 +696,7 @@ function ColorManager({
             <Plus size={15} /> Ajouter
           </button>
         </div>
+        <FilePreviewGrid urls={newFilePreviews} />
       </div>
     </div>
   );
