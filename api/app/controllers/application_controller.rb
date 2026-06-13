@@ -19,6 +19,19 @@ class ApplicationController < ActionController::Base
 
   private
 
+  # Bumpable cache version used to invalidate all v1 public caches at once.
+  # SolidCache doesn't support delete_matched, so we namespace cache keys with
+  # this counter and increment it on admin writes instead of deleting keys.
+  CACHE_VERSION_KEY = "v1/cache_version".freeze
+
+  def catalog_cache_version
+    Rails.cache.read(CACHE_VERSION_KEY).to_i
+  end
+
+  def bump_catalog_cache_version!
+    Rails.cache.write(CACHE_VERSION_KEY, catalog_cache_version + 1)
+  end
+
   def set_current_request
     Current.request = request
   end

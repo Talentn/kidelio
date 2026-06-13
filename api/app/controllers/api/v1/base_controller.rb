@@ -10,7 +10,7 @@ module Api
       end
 
       def cache_key_with_version(key)
-        "v1/#{key}/#{Product.maximum(:updated_at)&.to_i}-#{Category.maximum(:updated_at)&.to_i}"
+        "v1/#{key}/#{catalog_cache_version}-#{Product.maximum(:updated_at)&.to_i}-#{Category.maximum(:updated_at)&.to_i}"
       end
     end
   end

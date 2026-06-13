@@ -63,7 +63,7 @@ module Admin
     end
 
     def invalidate_catalog_cache
-      Rails.cache.delete_matched(/^v1\//) rescue Rails.cache.clear
+      bump_catalog_cache_version!
     end
   end
 end

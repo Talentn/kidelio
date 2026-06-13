@@ -10,7 +10,7 @@ module Api
       private
 
       def invalidate_catalog_cache
-        Rails.cache.delete_matched(/^v1\//) rescue nil
+        bump_catalog_cache_version!
       end
     end
   end

@@ -46,8 +46,7 @@ module Api
       end
 
       def invalidate_homepage_cache
-        Rails.cache.delete_matched(/^v1\/homepage/) rescue nil
-        Rails.cache.delete_matched(/hero_sliders/) rescue nil
+        bump_catalog_cache_version!
       end
     end
   end
