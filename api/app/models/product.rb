@@ -10,9 +10,12 @@ class Product < ApplicationRecord
 
   validates :name, :slug, :price, presence: true
   validates :slug, uniqueness: true
+  validates :reference, uniqueness: true, allow_nil: true
   validates :stock, numericality: { greater_than_or_equal_to: 0 }
   validates :price, numericality: { greater_than: 0 }
   validate :category_must_be_leaf, if: -> { category_id.present? }
+
+  before_validation :normalize_optional_strings
 
   scope :active, -> { where(active: true) }
   scope :featured, -> { where(featured: true, active: true) }
@@ -44,6 +47,13 @@ class Product < ApplicationRecord
   end
 
   private
+
+  # SQLite UNIQUE allows many NULLs but only one "" — blank optional fields must be NULL.
+  def normalize_optional_strings
+    self.reference = reference.presence
+    self.age_group = age_group.presence
+    self.description = description.presence
+  end
 
   def category_must_be_leaf
     return unless category&.children&.exists?

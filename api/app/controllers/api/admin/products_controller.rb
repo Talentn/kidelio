@@ -23,6 +23,8 @@ module Api
         else
           render json: { errors: product.errors.full_messages }, status: :unprocessable_entity
         end
+      rescue ActiveRecord::RecordNotUnique => e
+        render json: { errors: [ uniqueness_error_message(e) ] }, status: :unprocessable_entity
       end
 
       def update
@@ -34,6 +36,8 @@ module Api
         else
           render json: { errors: product.errors.full_messages }, status: :unprocessable_entity
         end
+      rescue ActiveRecord::RecordNotUnique => e
+        render json: { errors: [ uniqueness_error_message(e) ] }, status: :unprocessable_entity
       end
 
       def destroy
@@ -73,6 +77,14 @@ module Api
           ImageOptimizer.attach_optimized(product, :images, file)
         end
         ActivityLogger.log_media(product, attachment: :images, detail: "Images produit ajoutées")
+      end
+
+      def uniqueness_error_message(error)
+        msg = error.message.to_s
+        return "Cette référence est déjà utilisée" if msg.include?("reference")
+        return "Ce slug est déjà utilisé" if msg.include?("slug")
+
+        "Cette valeur existe déjà"
       end
 
       def admin_product_json(product, detail: false)
