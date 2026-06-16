@@ -9,6 +9,7 @@ const Statistics    = lazy(() => import("./pages/admin/Statistics").then((m) => 
 const AdminProducts   = lazy(() => import("./pages/admin/AdminProducts").then((m) => ({ default: m.AdminProducts })));
 const AdminStock      = lazy(() => import("./pages/admin/AdminStock").then((m) => ({ default: m.AdminStock })));
 const AdminOrders     = lazy(() => import("./pages/admin/AdminOrders").then((m) => ({ default: m.AdminOrders })));
+const AdminReviews    = lazy(() => import("./pages/admin/AdminReviews").then((m) => ({ default: m.AdminReviews })));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories").then((m) => ({ default: m.AdminCategories })));
 const ActivityLogs    = lazy(() => import("./pages/admin/ActivityLogs").then((m) => ({ default: m.ActivityLogs })));
 const AdminHomepage   = lazy(() => import("./pages/admin/AdminHomepage").then((m) => ({ default: m.AdminHomepage })));
@@ -43,6 +44,7 @@ export default function AdminApp() {
             <Route path="produits" element={<AdminProducts />} />
             <Route path="stock" element={<AdminStock />} />
             <Route path="commandes" element={<AdminOrders />} />
+            <Route path="avis" element={<AdminReviews />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="accueil" element={<AdminHomepage />} />
             <Route path="messages" element={<AdminMessages />} />

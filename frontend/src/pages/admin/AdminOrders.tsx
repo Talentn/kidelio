@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Eye, ShoppingCart, Phone, MapPin, User as UserIcon } from "lucide-react";
+import { Search, Eye, ShoppingCart, Phone, MapPin, User as UserIcon, Trash2 } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { ORDER_STATUSES, orderStatusLabel, orderStatusSelectClass, paymentMethodLabel } from "../../lib/orderStatus";
 import { useLivePoll } from "../../hooks/useLivePoll";
@@ -33,10 +33,16 @@ type Order = {
   user?: { id: number; name: string; email: string };
 };
 
-function OrderDetail({ id, onClose, onStatusChange }: { id: number; onClose: () => void; onStatusChange: (id: number, status: string) => void }) {
+function OrderDetail({ id, onClose, onStatusChange, onDeleted }: {
+  id: number;
+  onClose: () => void;
+  onStatusChange: (id: number, status: string) => void;
+  onDeleted: (id: number) => void;
+}) {
   const { notify } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiAdmin<{ order: Order }>(`/orders/${id}`).then((d) => setOrder(d.order)).catch(() => {});
@@ -53,6 +59,25 @@ function OrderDetail({ id, onClose, onStatusChange }: { id: number; onClose: () 
       notify(err instanceof Error ? err.message : "Erreur", "error");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const deleteOrder = async () => {
+    if (!order) return;
+    if (!window.confirm(
+      `Supprimer la commande ${order.order_number} ?\n\nLe stock sera remis en inventaire, le portefeuille et les stats seront ajustés.`
+    )) return;
+
+    setDeleting(true);
+    try {
+      await apiAdmin(`/orders/${id}`, { method: "DELETE" });
+      notify("Commande supprimée");
+      onDeleted(id);
+      onClose();
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -120,6 +145,17 @@ function OrderDetail({ id, onClose, onStatusChange }: { id: number; onClose: () 
             )}
             <div className="flex justify-between font-bold text-base border-t border-slate-200 pt-2 mt-1"><span>Total</span><span className="text-brand-600">{Number(order.total).toFixed(3)} TND</span></div>
           </div>
+          <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={deleteOrder}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              {deleting ? "Suppression..." : "Supprimer la commande"}
+            </button>
+          </div>
         </div>
       )}
     </Modal>
@@ -134,6 +170,7 @@ export function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [detailId, setDetailId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -158,6 +195,27 @@ export function AdminOrders() {
 
   const onStatusChange = (id: number, status: string) =>
     setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)));
+
+  const onDeleted = (id: number) =>
+    setOrders((os) => os.filter((o) => o.id !== id));
+
+  const deleteOrderInline = async (order: Order) => {
+    if (!window.confirm(
+      `Supprimer ${order.order_number} ? Le stock et les stats seront remis à jour.`
+    )) return;
+
+    setDeletingId(order.id);
+    try {
+      await apiAdmin(`/orders/${order.id}`, { method: "DELETE" });
+      onDeleted(order.id);
+      if (detailId === order.id) setDetailId(null);
+      notify("Commande supprimée");
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const updateStatusInline = async (order: Order, status: string) => {
     if (order.status === status) return;
@@ -211,7 +269,7 @@ export function AdminOrders() {
                   <th className="text-left font-bold px-4 py-3 hidden md:table-cell">Date</th>
                   <th className="text-left font-bold px-4 py-3">Total</th>
                   <th className="text-left font-bold px-4 py-3">Statut</th>
-                  <th className="text-right font-bold px-4 py-3">Détail</th>
+                  <th className="text-right font-bold px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -240,14 +298,25 @@ export function AdminOrders() {
                       </select>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setDetailId(o.id)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        aria-label="Voir le détail"
-                      >
-                        <Eye size={16} />
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailId(o.id)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          aria-label="Voir le détail"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === o.id}
+                          onClick={() => deleteOrderInline(o)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                          aria-label="Supprimer la commande"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -258,7 +327,12 @@ export function AdminOrders() {
       </Card>
 
       {detailId && (
-        <OrderDetail id={detailId} onClose={() => setDetailId(null)} onStatusChange={onStatusChange} />
+        <OrderDetail
+          id={detailId}
+          onClose={() => setDetailId(null)}
+          onStatusChange={onStatusChange}
+          onDeleted={onDeleted}
+        />
       )}
     </AdminPage>
   );

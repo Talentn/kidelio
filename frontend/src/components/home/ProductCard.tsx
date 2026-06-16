@@ -33,13 +33,14 @@ export function ProductCard({ p }: { p: HomeProduct }) {
     : 0
 
   const isFav = isFavorite(p.id)
+  const productHref = `/produits/${p.slug}`
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     // Products with variants always go to detail page
     if (p.has_variants) {
-      navigate(`/produits/${p.slug}`)
+      navigate(productHref)
       return
     }
     if (!p.in_stock || adding) return
@@ -60,41 +61,42 @@ export function ProductCard({ p }: { p: HomeProduct }) {
   }
 
   return (
-    <Link
-      to={`/produits/${p.slug}`}
-      className="product-card group"
-      onMouseEnter={() => prefetchV1(`/products/${p.slug}`)}
-    >
+    <article className="product-card group">
       <div className="product-img-wrap">
-        {p.image_urls[0] ? (
-          <img src={p.image_urls[0]} alt={p.name} loading="lazy" decoding="async" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200 text-4xl">👕</div>
-        )}
+        <Link
+          to={productHref}
+          className="block w-full h-full"
+          onMouseEnter={() => prefetchV1(`/products/${p.slug}`)}
+        >
+          {p.image_urls[0] ? (
+            <img src={p.image_urls[0]} alt={p.name} loading="lazy" decoding="async" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-200 text-4xl">👕</div>
+          )}
 
-        {!p.in_stock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
-              Rupture de stock
+          {!p.in_stock && (
+            <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+              <span className="bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+                Rupture de stock
+              </span>
+            </div>
+          )}
+
+          {discount > 0 && (
+            <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+              -{discount}%
             </span>
-          </div>
-        )}
+          )}
 
-        {discount > 0 && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
-            -{discount}%
-          </span>
-        )}
+          {p.age_group && (
+            <span className="absolute top-2 left-2 bg-white/90 text-gray-700 text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+              {p.age_group}
+            </span>
+          )}
+        </Link>
 
-        {p.age_group && (
-          <span className="absolute top-2 left-2 bg-white/90 text-gray-700 text-[11px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
-            {p.age_group}
-          </span>
-        )}
-
-        {/* ── Action buttons — always visible on mobile, on hover on desktop ── */}
-        <div className="absolute bottom-2 left-2 right-2 flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 md:flex sm:opacity-0 max-sm:opacity-100 max-sm:translate-y-0">
-          {/* Quick add */}
+        {/* Buttons sit outside the link so focus/scroll isn't pulled to the card footer after navigation. */}
+        <div className="absolute bottom-2 left-2 right-2 z-10 flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 md:flex sm:opacity-0 max-sm:opacity-100 max-sm:translate-y-0">
           <button
             type="button"
             onClick={handleQuickAdd}
@@ -110,7 +112,6 @@ export function ProductCard({ p }: { p: HomeProduct }) {
             {added ? 'Ajouté' : p.has_variants ? 'Choisir' : 'Ajouter'}
           </button>
 
-          {/* Favorite */}
           <button
             type="button"
             onClick={handleFav}
@@ -123,7 +124,7 @@ export function ProductCard({ p }: { p: HomeProduct }) {
         </div>
       </div>
 
-      <div className="p-3 pb-4">
+      <Link to={productHref} className="block p-3 pb-4">
         <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-1.5">{p.name}</h3>
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-bold text-gray-900">
@@ -136,7 +137,7 @@ export function ProductCard({ p }: { p: HomeProduct }) {
             </span>
           )}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </article>
   )
 }

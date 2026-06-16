@@ -71,7 +71,8 @@ Rails.application.routes.draw do
           resources :sizes, only: %i[create update destroy], controller: "product_color_sizes"
         end
       end
-      resources :orders, only: %i[index show update]
+      resources :orders, only: %i[index show update destroy]
+      resources :product_reviews, only: %i[index destroy], path: "reviews"
       resources :categories, only: %i[index create update destroy]
       resources :size_attributes, only: %i[index create update destroy], path: "size-attributes"
       resources :activity_logs, only: [:index], path: "activity-logs"

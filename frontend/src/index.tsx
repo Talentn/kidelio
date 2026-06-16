@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import './index.css'
 import App from './App'
 
+if ('scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
 const root = document.getElementById('root') as HTMLElement
 
 ReactDOM.createRoot(root).render(

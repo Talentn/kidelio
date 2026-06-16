@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { scrollWindowToTop } from '../lib/scrollToTop'
 import { Link, useParams } from 'react-router-dom'
 import {
   ShoppingCart, ChevronLeft, Minus, Plus, Check, Heart,
@@ -71,6 +72,10 @@ export function ProductDetail() {
     [product?.colors],
   )
 
+  useLayoutEffect(() => {
+    scrollWindowToTop()
+  }, [slug])
+
   useEffect(() => {
     if (!slug || !productPath) return
 
@@ -107,7 +112,11 @@ export function ProductDetail() {
           age_group: d.product.age_group,
         })
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        scrollWindowToTop()
+        window.requestAnimationFrame(scrollWindowToTop)
+      })
   }, [slug, productPath])
 
   const selectedColor = useMemo(

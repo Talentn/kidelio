@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server, ListTodo,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server, ListTodo, Star,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { isSuperOps } from '../../lib/superOps'
@@ -52,6 +52,7 @@ export function AdminLayout() {
     { to: '/admin/produits',   label: 'Produits',         icon: Package },
     { to: '/admin/stock',      label: 'Stock',            icon: Boxes },
     { to: '/admin/commandes',  label: 'Commandes',        icon: ShoppingCart,   badge: stats.pending_orders },
+    { to: '/admin/avis',        label: 'Avis clients',     icon: Star },
     { to: '/admin/categories', label: 'Catégories',       icon: Tags },
     { to: '/admin/accueil',    label: "Page d'accueil",   icon: Layout },
     { to: '/admin/messages',   label: 'Messages',         icon: MessageSquare,  badge: stats.unread_messages },
