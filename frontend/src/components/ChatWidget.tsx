@@ -161,7 +161,11 @@ export function ChatWidget() {
   }, [roomId, open, roomStatus])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!open) return
+    const container = bottomRef.current?.parentElement
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+    }
   }, [msgs, open])
 
   const startChat = async (e: React.FormEvent) => {

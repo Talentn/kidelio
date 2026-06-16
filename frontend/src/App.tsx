@@ -7,6 +7,7 @@ import { FavoritesProvider } from "./context/FavoritesContext";
 import { StoreProvider } from "./context/StoreContext";
 import { UIProvider } from "./context/UIContext";
 import { Layout } from "./components/Layout";
+import { ScrollToTop } from "./components/ScrollToTop";
 import { DeferredWidgets } from "./components/DeferredWidgets";
 import { CartToastProvider } from "./context/CartToastContext";
 import { Home } from "./pages/Home";
@@ -46,6 +47,7 @@ function App() {
           <FavoritesProvider>
           <UIProvider>
             <BrowserRouter>
+              <ScrollToTop />
               <DeferredWidgets />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
