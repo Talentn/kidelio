@@ -6,7 +6,7 @@
  * Bootstrap/init functions live in metaPixelInit.ts.
  */
 
-import { metaCatalogContentId } from './metaCatalogId'
+import { defaultCatalogContentId, metaCatalogContentId } from './metaCatalogId'
 import { isMetaPixelConfigured, sendPixelEvent } from './metaPixelInit'
 
 // Re-export init helpers so existing page-component imports keep working.
@@ -19,6 +19,7 @@ export {
   setMetaPixelId,
   rememberConsent,
   hasMarketingConsent,
+  onPixelReady,
 } from './metaPixelInit'
 
 // ─── low-level wrappers ──────────────────────────────────────────────────────
@@ -62,23 +63,33 @@ export function trackViewContent(product: {
   in_stock?: boolean
   category?: string
   age_group?: string
+  colorId?: number | null
+  sizeLabel?: string | null
+  colors?: Array<{ id: number; position?: number; sizes?: Array<{ size: string }> }>
 }): void {
+  const contentId = product.colorId
+    ? metaCatalogContentId(product.id, product.colorId, product.sizeLabel)
+    : defaultCatalogContentId(product)
+
+  const price = Number(product.effective_price ?? product.price ?? 0)
+  const basePrice = Number(product.price ?? price)
+
   fbq('ViewContent', {
-    content_ids: [String(product.id)],
+    content_ids: [contentId],
     content_name: product.name,
     content_type: 'product',
     content_category: product.category ?? '',
-    value: Number(product.effective_price.toFixed(3)),
+    value: Number(price.toFixed(3)),
     currency: 'TND',
   })
 
   fbqCustom('ProductView', {
-    content_ids: [String(product.id)],
+    content_ids: [contentId],
     content_name: product.name,
     content_category: product.category ?? '',
     age_group: product.age_group ?? '',
-    price: Number(product.price.toFixed(3)),
-    sale_price: product.on_promo ? Number(product.effective_price.toFixed(3)) : undefined,
+    price: Number(basePrice.toFixed(3)),
+    sale_price: product.on_promo ? Number(price.toFixed(3)) : undefined,
     on_promo: product.on_promo ?? false,
     in_stock: product.in_stock ?? true,
     currency: 'TND',
@@ -86,18 +97,18 @@ export function trackViewContent(product: {
 
   if (product.on_promo) {
     fbqCustom('ViewPromotion', {
-      content_ids: [String(product.id)],
+      content_ids: [contentId],
       content_name: product.name,
-      original_price: Number(product.price.toFixed(3)),
-      sale_price: Number(product.effective_price.toFixed(3)),
-      savings: Number((product.price - product.effective_price).toFixed(3)),
+      original_price: Number(basePrice.toFixed(3)),
+      sale_price: Number(price.toFixed(3)),
+      savings: Number((basePrice - price).toFixed(3)),
       currency: 'TND',
     })
   }
 
   if (product.in_stock === false) {
     fbqCustom('OutOfStockView', {
-      content_ids: [String(product.id)],
+      content_ids: [contentId],
       content_name: product.name,
       content_category: product.category ?? '',
       currency: 'TND',

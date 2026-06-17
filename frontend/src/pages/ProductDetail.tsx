@@ -9,8 +9,7 @@ import { api, peekCacheV1 } from '../api/client'
 import { useCart } from '../context/CartContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useUI } from '../context/UIContext'
-import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
-import { isPixelReady, onPixelReady } from '../lib/metaPixelInit'
+import { trackAddToCart, trackViewContent, isPixelReady, onPixelReady } from '../lib/metaPixel'
 import { SEO } from '../components/SEO'
 import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
 import { useStore } from '../context/StoreContext'
@@ -107,6 +106,10 @@ export function ProductDetail() {
       .then((d) => {
         applyProduct(d.product)
       })
+      .catch((err: unknown) => {
+        console.error('[ProductDetail] fetch failed:', err)
+        setProduct(null)
+      })
       .finally(() => {
         setLoading(false)
         scrollWindowToTop()
@@ -116,6 +119,8 @@ export function ProductDetail() {
 
   useEffect(() => {
     if (!product) return
+    const color = product.colors?.find((c) => c.id === colorId) ?? sortedColors[0]
+    const sizeLabel = size ?? color?.sizes?.[0]?.size
     const track = () =>
       trackViewContent({
         id: product.id,
@@ -126,10 +131,13 @@ export function ProductDetail() {
         in_stock: product.in_stock,
         category: product.category?.name,
         age_group: product.age_group,
+        colors: product.colors,
+        colorId: color?.id,
+        sizeLabel,
       })
     if (isPixelReady()) track()
     return onPixelReady(track)
-  }, [product])
+  }, [product, colorId, size, sortedColors])
 
   const selectedColor = useMemo(
     () => product?.colors?.find((c) => c.id === colorId) ?? null,

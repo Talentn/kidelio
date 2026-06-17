@@ -7,17 +7,18 @@ import { FavoritesProvider } from "./context/FavoritesContext";
 import { StoreProvider } from "./context/StoreContext";
 import { UIProvider } from "./context/UIContext";
 import { Layout } from "./components/Layout";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { DeferredWidgets } from "./components/DeferredWidgets";
 import { CartToastProvider } from "./context/CartToastContext";
 import { Home } from "./pages/Home";
+import { ProductDetail } from "./pages/ProductDetail";
 
 // Admin is a separate entry chunk — not referenced until /admin/*
 const AdminApp = lazy(() => import("./AdminApp"));
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Products      = lazy(() => import("./pages/Products").then(m => ({ default: m.Products })));
-const ProductDetail = lazy(() => import("./pages/ProductDetail").then(m => ({ default: m.ProductDetail })));
 const Cart          = lazy(() => import("./pages/Cart").then(m => ({ default: m.Cart })));
 const Checkout      = lazy(() => import("./pages/Checkout").then(m => ({ default: m.Checkout })));
 const Login         = lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
@@ -49,6 +50,7 @@ function App() {
             <BrowserRouter>
               <ScrollToTop />
               <DeferredWidgets />
+              <RouteErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* ── Boutique (public) ── */}
@@ -76,6 +78,7 @@ function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
+              </RouteErrorBoundary>
             </BrowserRouter>
           </UIProvider>
           </FavoritesProvider>

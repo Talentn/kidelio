@@ -73,7 +73,7 @@ class MetaConversionsApi
     req = request || @request
     send_event(
       event_name:       "ViewContent",
-      event_id:         "vc-#{product.id}-#{Time.current.to_i}",
+      event_id:         "vc-#{MetaCatalogIds.default_content_id_for_product(product)}-#{Time.current.to_i}",
       event_source_url: "#{SITE_URL.call}/produits/#{product.slug}",
       user_data:        user_data_from_request(req),
       custom_data: {

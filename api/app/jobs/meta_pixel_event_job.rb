@@ -24,7 +24,7 @@ class MetaPixelEventJob < ApplicationJob
       )
 
     when :view_content
-      product = Product.find(options[:product_id])
+      product = Product.includes(colors: :sizes).find(options[:product_id])
       api.track_view_content(product: product)
     end
   rescue ActiveRecord::RecordNotFound => e
