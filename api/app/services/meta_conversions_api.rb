@@ -13,11 +13,13 @@ class MetaConversionsApi
   SITE_URL      = -> { ENV.fetch("SITE_URL", "http://localhost:3000") }
 
   # @param request [ActionDispatch::Request, nil]
-  def initialize(request: nil)
+  # @param user_context [Hash, nil] ip / user_agent / fbp / fbc from the browser request
+  def initialize(request: nil, user_context: nil)
     @pixel_id         = ENV["META_PIXEL_ID"].to_s.strip
     @access_token     = ENV["META_ACCESS_TOKEN"].to_s.strip
     @test_event_code  = ENV["META_TEST_EVENT_CODE"].to_s.strip.presence
     @request          = request
+    @user_context     = (user_context || {}).symbolize_keys
   end
 
   # ── public event methods ──────────────────────────────────────────────────
@@ -26,7 +28,7 @@ class MetaConversionsApi
     return unless configured?
 
     items        = order.order_items.includes(:product)
-    content_ids  = items.map { |i| i.product_id.to_s }
+    content_ids  = items.map { |i| MetaCatalogIds.content_id_for_order_item(i) }
     num_items    = items.sum(&:quantity)
 
     send_event(
@@ -45,19 +47,19 @@ class MetaConversionsApi
     )
   end
 
-  def track_add_to_cart(product:, quantity:, price:, request: nil)
+  def track_add_to_cart(product:, quantity:, price:, color_id: nil, size_label: nil, request: nil)
     return unless configured?
 
     req = request || @request
     send_event(
       event_name:       "AddToCart",
-      event_id:         "atc-#{product.id}-#{Time.current.to_i}",
+      event_id:         "atc-#{MetaCatalogIds.content_id(product_id: product.id, color_id: color_id, size_label: size_label)}-#{Time.current.to_i}",
       event_source_url: "#{SITE_URL.call}/produits/#{product.slug}",
       user_data:        user_data_from_request(req),
       custom_data: {
         currency:     CURRENCY,
         value:        (price.to_f * quantity).round(3),
-        content_ids:  [product.id.to_s],
+        content_ids:  [MetaCatalogIds.content_id(product_id: product.id, color_id: color_id, size_label: size_label)],
         content_type: "product",
         content_name: product.name,
         num_items:    quantity,
@@ -141,15 +143,15 @@ class MetaConversionsApi
 
   # For other events — only request metadata
   def user_data_from_request(req)
-    return {} unless req
-
+    ctx = @user_context
     data = {}
-    data[:client_ip_address] = req.remote_ip if req.remote_ip.present?
-    data[:client_user_agent] = req.user_agent if req.user_agent.present?
+    data[:client_ip_address] = ctx[:client_ip].presence || req&.remote_ip if ctx[:client_ip].present? || req&.remote_ip.present?
+    data[:client_user_agent] = ctx[:user_agent].presence || req&.user_agent if ctx[:user_agent].present? || req&.user_agent.present?
 
-    # Read Meta's own cookies (_fbp set by pixel, _fbc set on ad click)
-    data[:fbp] = req.cookies["_fbp"] if req.cookies["_fbp"].present?
-    data[:fbc] = req.cookies["_fbc"] if req.cookies["_fbc"].present?
+    fbp = ctx[:fbp].presence || req&.cookies&.[]("_fbp")
+    fbc = ctx[:fbc].presence || req&.cookies&.[]("_fbc")
+    data[:fbp] = fbp if fbp.present?
+    data[:fbc] = fbc if fbc.present?
 
     data
   end

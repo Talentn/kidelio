@@ -18,12 +18,17 @@ module Api
           color_label: params[:color_label],
           color_id:    params[:color_id]
         )
-        MetaPixelEventJob.perform_later(
-          :add_to_cart,
-          product_id: product.id,
-          quantity:   quantity,
-          price:      product.effective_price.to_f,
-        )
+        if marketing_consent?
+          MetaPixelEventJob.perform_later(
+            :add_to_cart,
+            product_id: product.id,
+            quantity:   quantity,
+            price:      product.effective_price.to_f,
+            color_id:   params[:color_id],
+            size_label: params[:size_label],
+            user_context: meta_user_context
+          )
+        end
         render json: cart_json
       rescue ArgumentError => e
         render json: { error: e.message }, status: :unprocessable_entity

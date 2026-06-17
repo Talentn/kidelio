@@ -44,6 +44,13 @@ module Api
                     colors: [:sizes, { images_attachments: :blob }])
           .find_by!(slug: params[:id])
         expires_in 5.minutes, public: true
+        if marketing_consent?
+          MetaPixelEventJob.perform_later(
+            :view_content,
+            product_id: product.id,
+            user_context: meta_user_context
+          )
+        end
         render json: { product: product_json(product, detail: true) }
       end
 

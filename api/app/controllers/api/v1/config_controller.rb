@@ -22,7 +22,8 @@ module Api
             site: ENV.fetch("SITE_URL", "http://localhost:3000"),
             admin: ENV.fetch("SITE_URL", "http://localhost:3000") + "/admin",
             api: ENV.fetch("API_URL", "http://localhost:3001")
-          }
+          },
+          meta_pixel_id: ENV["META_PIXEL_ID"].to_s.strip.presence
         }
       end
     end

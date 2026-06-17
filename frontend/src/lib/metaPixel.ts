@@ -7,23 +7,28 @@
  */
 
 import { metaCatalogContentId } from './metaCatalogId'
-import { _pixelReady } from './metaPixelInit'
+import { isMetaPixelConfigured, sendPixelEvent } from './metaPixelInit'
 
 // Re-export init helpers so existing page-component imports keep working.
-export { isMetaPixelConfigured, isPixelReady, activatePixel, injectNoscript, trackPageView } from './metaPixelInit'
+export {
+  isMetaPixelConfigured,
+  isPixelReady,
+  activatePixel,
+  injectNoscript,
+  trackPageView,
+  setMetaPixelId,
+  rememberConsent,
+  hasMarketingConsent,
+} from './metaPixelInit'
 
 // ─── low-level wrappers ──────────────────────────────────────────────────────
 
 function fbq(event: string, params?: Record<string, unknown>): void {
-  if (!_pixelReady) return
-  if (params) window.fbq?.('track', event, params)
-  else window.fbq?.('track', event)
+  sendPixelEvent('track', event, params)
 }
 
 function fbqCustom(event: string, params?: Record<string, unknown>): void {
-  if (!_pixelReady) return
-  if (params) window.fbq?.('trackCustom', event, params)
-  else window.fbq?.('trackCustom', event)
+  sendPixelEvent('trackCustom', event, params)
 }
 
 // ─── page / session ──────────────────────────────────────────────────────────
@@ -161,19 +166,24 @@ export function trackPurchase(payload: {
   discount?: number
   utms?: Record<string, string>
 }): void {
-  if (!_pixelReady) return
-  window.fbq?.('track', 'Purchase', {
-    value: Number(payload.value.toFixed(3)),
-    currency: 'TND',
-    content_ids: payload.contentIds,
-    content_type: 'product',
-    num_items: payload.numItems,
-    order_id: payload.orderNumber,
-    ...(payload.promoCode ? { coupon: payload.promoCode } : {}),
-    ...(payload.utms && Object.keys(payload.utms).length > 0
-      ? { custom_data: payload.utms }
-      : {}),
-  }, { eventID: payload.orderNumber })
+  if (!isMetaPixelConfigured()) return
+  sendPixelEvent(
+    'track',
+    'Purchase',
+    {
+      value: Number(payload.value.toFixed(3)),
+      currency: 'TND',
+      content_ids: payload.contentIds,
+      content_type: 'product',
+      num_items: payload.numItems,
+      order_id: payload.orderNumber,
+      ...(payload.promoCode ? { coupon: payload.promoCode } : {}),
+      ...(payload.utms && Object.keys(payload.utms).length > 0
+        ? { custom_data: payload.utms }
+        : {}),
+    },
+    { eventID: payload.orderNumber },
+  )
 }
 
 // ─── account / lead ──────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { useCart } from '../context/CartContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
+import { isPixelReady, onPixelReady } from '../lib/metaPixelInit'
 import { SEO } from '../components/SEO'
 import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
 import { useStore } from '../context/StoreContext'
@@ -105,16 +106,6 @@ export function ProductDetail() {
     api<{ product: Product }>(productPath)
       .then((d) => {
         applyProduct(d.product)
-        trackViewContent({
-          id: d.product.id,
-          name: d.product.name,
-          price: d.product.price,
-          effective_price: d.product.effective_price,
-          on_promo: d.product.on_promo,
-          in_stock: d.product.in_stock,
-          category: d.product.category?.name,
-          age_group: d.product.age_group,
-        })
       })
       .finally(() => {
         setLoading(false)
@@ -122,6 +113,23 @@ export function ProductDetail() {
         window.requestAnimationFrame(scrollWindowToTop)
       })
   }, [slug, productPath])
+
+  useEffect(() => {
+    if (!product) return
+    const track = () =>
+      trackViewContent({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        effective_price: product.effective_price,
+        on_promo: product.on_promo,
+        in_stock: product.in_stock,
+        category: product.category?.name,
+        age_group: product.age_group,
+      })
+    if (isPixelReady()) track()
+    return onPixelReady(track)
+  }, [product])
 
   const selectedColor = useMemo(
     () => product?.colors?.find((c) => c.id === colorId) ?? null,

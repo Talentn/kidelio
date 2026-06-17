@@ -92,6 +92,19 @@ class ApplicationController < ActionController::Base
     Current.user = nil
   end
 
+  def meta_user_context
+    {
+      client_ip: request.remote_ip,
+      user_agent: request.user_agent,
+      fbp: cookies["_fbp"],
+      fbc: cookies["_fbc"]
+    }.compact
+  end
+
+  def marketing_consent?
+    cookies[Api::V1::ConsentController::COOKIE_NAME] == "all"
+  end
+
   # Absolute blob URLs for JSON APIs (admin + storefront). Relative /rails/... paths
   # break when the SPA is served from a different host than the API.
   def blob_url_options

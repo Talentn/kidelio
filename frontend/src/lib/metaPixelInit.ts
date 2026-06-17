@@ -20,15 +20,41 @@ type Fbq = {
   push: Fbq
 }
 
+type PendingEvent = {
+  kind: 'track' | 'trackCustom'
+  event: string
+  params?: Record<string, unknown>
+  options?: Record<string, unknown>
+}
+
 // Shared pixel state — same module instance across the app via ES module cache.
 export let _pixelReady = false
 
+export const CONSENT_STORAGE_KEY = 'kidelio_consent'
+
+let runtimePixelId = ''
+let pendingEvents: PendingEvent[] = []
 let lastPageViewKey = ''
 let lastPageViewAt = 0
 const PAGE_VIEW_DEDUP_MS = 4000
 
-function pixelId(): string {
+function buildTimePixelId(): string {
   return (import.meta.env.VITE_META_PIXEL_ID ?? '').trim()
+}
+
+function pixelId(): string {
+  return runtimePixelId || buildTimePixelId()
+}
+
+/** Runtime fallback when VITE_META_PIXEL_ID was not baked into the build. */
+export function setMetaPixelId(id: string): void {
+  const next = id.trim()
+  if (!next || next === runtimePixelId) return
+  runtimePixelId = next
+  if (hasMarketingConsent() && !_pixelReady) {
+    activatePixel()
+    injectNoscript()
+  }
 }
 
 export function isMetaPixelConfigured(): boolean {
@@ -37,6 +63,24 @@ export function isMetaPixelConfigured(): boolean {
 
 export function isPixelReady(): boolean {
   return _pixelReady
+}
+
+export function hasMarketingConsent(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem(CONSENT_STORAGE_KEY) === 'all'
+  } catch {
+    return false
+  }
+}
+
+export function rememberConsent(level: 'all' | 'essential'): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(CONSENT_STORAGE_KEY, level)
+  } catch {
+    /* private browsing */
+  }
 }
 
 function injectFbqStub(): void {
@@ -66,11 +110,29 @@ function injectScript(): void {
 
 const PIXEL_READY_EVENT = 'kidelio-pixel-ready'
 
+function flushPendingEvents(): void {
+  if (!_pixelReady || pendingEvents.length === 0) return
+  const queued = pendingEvents
+  pendingEvents = []
+  for (const item of queued) {
+    if (item.kind === 'trackCustom') {
+      window.fbq?.('trackCustom', item.event, item.params)
+    } else if (item.options) {
+      window.fbq?.('track', item.event, item.params, item.options)
+    } else if (item.params) {
+      window.fbq?.('track', item.event, item.params)
+    } else {
+      window.fbq?.('track', item.event)
+    }
+  }
+}
+
 export function activatePixel(): void {
   if (_pixelReady || !isMetaPixelConfigured()) return
   injectScript()
   window.fbq?.('init', pixelId())
   _pixelReady = true
+  flushPendingEvents()
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(PIXEL_READY_EVENT))
   }
@@ -98,14 +160,40 @@ export function injectNoscript(): void {
   document.body.appendChild(ns)
 }
 
+/** Queue until consent activates the pixel — never drop events silently. */
+export function sendPixelEvent(
+  kind: PendingEvent['kind'],
+  event: string,
+  params?: Record<string, unknown>,
+  options?: Record<string, unknown>,
+): void {
+  const mayQueue = isMetaPixelConfigured() || hasMarketingConsent()
+  if (!mayQueue) return
+
+  if (!_pixelReady || !isMetaPixelConfigured()) {
+    pendingEvents.push({ kind, event, params, options })
+    return
+  }
+
+  if (kind === 'trackCustom') {
+    window.fbq?.('trackCustom', event, params)
+  } else if (options) {
+    window.fbq?.('track', event, params, options)
+  } else if (params) {
+    window.fbq?.('track', event, params)
+  } else {
+    window.fbq?.('track', event)
+  }
+}
+
 /** Fire PageView once per path within a short window (avoids duplicate SPA + consent fires). */
 export function trackPageView(path?: string): void {
-  if (!_pixelReady) return
+  if (!isMetaPixelConfigured()) return
   const pagePath = path ?? (typeof window !== 'undefined' ? window.location.pathname : '/')
   const key = `${pagePath}${typeof window !== 'undefined' ? window.location.search : ''}`
   const now = Date.now()
   if (key === lastPageViewKey && now - lastPageViewAt < PAGE_VIEW_DEDUP_MS) return
   lastPageViewKey = key
   lastPageViewAt = now
-  window.fbq?.('track', 'PageView')
+  sendPixelEvent('track', 'PageView')
 }

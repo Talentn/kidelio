@@ -12,6 +12,7 @@ export type StoreConfig = {
   communication?: string;
   google_auth?: boolean;
   urls: { site: string; admin: string };
+  meta_pixel_id?: string;
 };
 
 type StoreContextType = {

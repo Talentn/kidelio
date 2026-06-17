@@ -30,7 +30,13 @@ module Api
         end
 
         ProcessOrderJob.perform_later(order.id)
-        MetaPixelEventJob.perform_later(:purchase, order_id: order.id)
+        if marketing_consent?
+          MetaPixelEventJob.perform_later(
+            :purchase,
+            order_id: order.id,
+            user_context: meta_user_context
+          )
+        end
         render json: { order: order_track_json(order, detailed: true) }, status: :created
       rescue OrderCreator::Error => e
         render json: { error: e.message }, status: :unprocessable_entity

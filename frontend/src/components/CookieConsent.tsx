@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api/client'
-import { activatePixel, injectNoscript, isMetaPixelConfigured, trackPageView } from '../lib/metaPixelInit'
+import {
+  activatePixel,
+  injectNoscript,
+  isMetaPixelConfigured,
+  rememberConsent,
+  trackPageView,
+} from '../lib/metaPixelInit'
 
 export function CookieConsent() {
   const location = useLocation()
@@ -14,16 +20,20 @@ export function CookieConsent() {
       return
     }
     api<{ consent: string | null }>('/consent')
-      .then((d) => { if (!d.consent) setVisible(true) })
+      .then((d) => {
+        if (d.consent === 'all') rememberConsent('all')
+        else if (d.consent === 'essential') rememberConsent('essential')
+        if (!d.consent) setVisible(true)
+      })
       .catch(() => setVisible(true))
   }, [location.pathname])
 
   const accept = async () => {
     await api('/consent', { method: 'PATCH', body: JSON.stringify({ level: 'all' }) })
+    rememberConsent('all')
     if (isMetaPixelConfigured()) {
       activatePixel()
       injectNoscript()
-      // MetaPixel route effect also fires PageView; dedup prevents doubles
       trackPageView(window.location.pathname)
     }
     setVisible(false)
@@ -31,6 +41,7 @@ export function CookieConsent() {
 
   const decline = async () => {
     await api('/consent', { method: 'PATCH', body: JSON.stringify({ level: 'essential' }) })
+    rememberConsent('essential')
     setVisible(false)
   }
 
@@ -55,7 +66,6 @@ export function CookieConsent() {
         Accepter et continuer
       </button>
 
-      {/* Nearly invisible "see more" */}
       {!expanded && (
         <button
           type="button"
