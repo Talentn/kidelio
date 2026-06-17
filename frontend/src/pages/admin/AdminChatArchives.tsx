@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, MessageCircle, Search, User, ChevronLeft, ChevronRight } from 'lucide-react'
-import { AdminPage } from '../../components/admin/ui'
-import { goGet } from '../../lib/goApi'
+import { Archive, MessageCircle, Search, Trash2, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { AdminPage, useToast } from '../../components/admin/ui'
+import { goDelete, goGet } from '../../lib/goApi'
 import { chatAgentLabel } from '../../lib/chatDisplay'
 
 type ChatMsg = {
@@ -38,6 +38,7 @@ function formatDate(iso: string) {
 }
 
 export function AdminChatArchives() {
+  const { notify } = useToast()
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [rooms, setRooms] = useState<ArchivedRoom[]>([])
@@ -47,6 +48,7 @@ export function AdminChatArchives() {
   const [selected, setSelected] = useState<ArchivedRoom | null>(null)
   const [msgs, setMsgs] = useState<ChatMsg[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -98,6 +100,33 @@ export function AdminChatArchives() {
       setSelected(null)
     } finally {
       setDetailLoading(false)
+    }
+  }
+
+  const deleteRoom = async () => {
+    if (!selected) return
+    const roomId = selected.id
+    if (!window.confirm(
+      `Supprimer définitivement la conversation avec ${selected.user_name} ?\n\nCette action est irréversible.`,
+    )) return
+
+    setDeleting(true)
+    try {
+      await goDelete(`/chat/admin/rooms/${roomId}`)
+      notify('Conversation supprimée')
+      setSelected(null)
+      setMsgs([])
+      const nextTotal = Math.max(0, total - 1)
+      setTotal(nextTotal)
+      if (offset >= nextTotal && offset > 0) {
+        setOffset(Math.max(0, offset - PAGE_SIZE))
+      } else {
+        loadArchives(search, offset)
+      }
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : 'Erreur', 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -214,20 +243,32 @@ export function AdminChatArchives() {
           ) : (
             <>
               <div className="px-5 py-3 border-b border-gray-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User size={14} className="text-gray-500" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User size={14} className="text-gray-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900">{selected.user_name}</p>
+                      <p className="text-[11px] text-gray-400">
+                        {selected.user_email || 'Invité'}
+                        {selected.agent_name && ' · Agent : Support'}
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        Ouverte {formatDate(selected.created_at)} · Clôturée {formatDate(selected.updated_at)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{selected.user_name}</p>
-                    <p className="text-[11px] text-gray-400">
-                      {selected.user_email || 'Invité'}
-                      {selected.agent_name && ' · Agent : Support'}
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      Ouverte {formatDate(selected.created_at)} · Clôturée {formatDate(selected.updated_at)}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={deleteRoom}
+                    disabled={deleting}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors disabled:opacity-50 flex-shrink-0"
+                    title="Supprimer cette conversation"
+                  >
+                    <Trash2 size={14} />
+                    {deleting ? 'Suppression...' : 'Supprimer'}
+                  </button>
                 </div>
               </div>
 

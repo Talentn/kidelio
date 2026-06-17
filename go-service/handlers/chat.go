@@ -496,6 +496,26 @@ func GetArchives(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DELETE /chat/admin/rooms/{id} — permanently delete archived conversation
+func AdminDeleteRoom(w http.ResponseWriter, r *http.Request) {
+	if _, ok := middleware.StaffFromRequest(w, r); !ok {
+		return
+	}
+	roomID := r.PathValue("id")
+	room, err := store.GetRoom(roomID)
+	if err != nil || room == nil || room.Status != "closed" {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	if err := store.DeleteClosedRoom(roomID); err != nil {
+		log.Printf("AdminDeleteRoom: %v", err)
+		http.Error(w, `{"error":"delete failed"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
 // ── GET /chat/admin/rooms/{id} — read-only archived conversation ─────────────
 
 func GetAdminRoom(w http.ResponseWriter, r *http.Request) {

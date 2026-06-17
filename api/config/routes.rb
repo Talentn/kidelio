@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       get "chat/admin/queue", to: "go_proxy#chat_admin_queue"
       get "chat/admin/archives", to: "go_proxy#chat_admin_archives"
       get "chat/admin/rooms/:room_id", to: "go_proxy#chat_admin_room"
+      delete "chat/admin/rooms/:room_id", to: "go_proxy#chat_admin_delete"
       post "chat/admin/rooms/:room_id/join", to: "go_proxy#chat_admin_join"
       post "chat/admin/rooms/:room_id/messages", to: "go_proxy#chat_admin_message"
       post "chat/admin/rooms/:room_id/close", to: "go_proxy#chat_admin_close"

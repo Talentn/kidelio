@@ -65,6 +65,12 @@ export function goTrack(path: string, body: unknown) {
   goPost(path, body, { 'X-Session-Id': liveSessionId() }).catch(() => {})
 }
 
+export async function goDelete<T = { ok: boolean }>(path: string): Promise<T> {
+  const res = await goFetch(path, { method: 'DELETE', credentials: 'include' })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 export async function goGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), GO_TIMEOUT_MS)

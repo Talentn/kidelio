@@ -110,6 +110,14 @@ func CloseRoom(roomID string) error {
 	return err
 }
 
+func DeleteClosedRoom(roomID string) error {
+	if _, err := DB.Exec(`DELETE FROM chat_messages WHERE room_id = ?`, roomID); err != nil {
+		return err
+	}
+	_, err := DB.Exec(`DELETE FROM chat_rooms WHERE id = ? AND status = 'closed'`, roomID)
+	return err
+}
+
 type ArchivedRoom struct {
 	Room
 	MessageCount int `json:"message_count"`
