@@ -34,7 +34,7 @@ export function Favorites() {
   if (ids.length === 0) {
     return (
       <div className="page-wrap py-20 text-center animate-fade-in">
-        <SEO title="Mes favoris" description="Retrouvez vos articles favoris sur Kidelio." />
+        <SEO title="Mes favoris" description="Retrouvez vos articles favoris sur Kidelio." url="/favoris" noIndex />
         <div className="w-24 h-24 bg-pink-50 rounded-full flex items-center justify-center mx-auto mb-6">
           <Heart size={40} className="text-pink-400" />
         </div>
@@ -52,7 +52,7 @@ export function Favorites() {
 
   return (
     <div className="page-wrap py-8 md:py-10">
-      <SEO title="Mes favoris" description="Retrouvez vos articles favoris sur Kidelio." />
+      <SEO title="Mes favoris" description="Retrouvez vos articles favoris sur Kidelio." url="/favoris" noIndex />
       <div className="mb-8">
         <h1 className="font-display font-semibold text-2xl md:text-3xl text-ink mb-2">Mes favoris</h1>
         <p className="text-gray-500 text-sm">

@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async'
+import { useLocation } from 'react-router-dom'
 
 const SITE_NAME = 'Kidelio'
 const BASE_URL = 'https://kideliowear.com'
@@ -25,8 +26,10 @@ export function SEO({
   noIndex = false,
   jsonLd,
 }: SEOProps) {
+  const location = useLocation()
   const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Mode & jouets pour enfants`
-  const canonicalUrl = url ? `${BASE_URL}${url}` : BASE_URL
+  const canonicalPath = url ?? (location.pathname || '/')
+  const canonicalUrl = `${BASE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`
   const absoluteImage = image.startsWith('http') ? image : `${BASE_URL}${image}`
 
   return (

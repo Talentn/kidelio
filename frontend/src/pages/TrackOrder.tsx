@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Search, Loader2, PackageSearch } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
 import { OrderTracking, type TrackedOrder } from '../components/OrderTracking'
+import { SEO } from '../components/SEO'
 
 export function TrackOrder() {
   const { orderNumber: urlNumber } = useParams()
@@ -51,6 +52,7 @@ export function TrackOrder() {
 
   return (
     <div className="page-wrap py-8 md:py-12 animate-fade-in">
+      <SEO title="Suivre ma commande" url="/suivi" noIndex />
       <div className="max-w-xl mx-auto text-center mb-8">
         <div className="w-16 h-16 bg-brand-100 text-brand-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <PackageSearch size={32} strokeWidth={1.5} />

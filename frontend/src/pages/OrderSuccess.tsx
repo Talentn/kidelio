@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CheckCircle, Home, ShoppingBag, Loader2, PackageSearch } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
 import { OrderTracking, type TrackedOrder } from '../components/OrderTracking'
+import { SEO } from '../components/SEO'
 
 export function OrderSuccess() {
   const { orderNumber } = useParams()
@@ -23,6 +24,7 @@ export function OrderSuccess() {
 
   return (
     <div className="page-wrap py-10 md:py-16 animate-scale-in">
+      <SEO title="Commande confirmée" noIndex />
       <div className="text-center mb-10">
         <div className="relative w-24 h-24 mx-auto mb-6">
           <div className="absolute inset-0 bg-sage-100 rounded-full animate-ping opacity-30" />

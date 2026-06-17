@@ -2,6 +2,7 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
   get "health", to: "health#show"
   get "sitemap.xml", to: "sitemap#index", defaults: { format: :xml }
+  get "facebook_cat_feed.xml", to: "facebook_cat_feed#index", defaults: { format: :xml }
 
   # ── JSON API (Rails backend — all business logic) ────────────────────────
   namespace :api do
@@ -43,7 +44,6 @@ Rails.application.routes.draw do
         post "review", to: "product_reviews#create"
       end
       resources :categories, only: [:index]
-      get 'catalog', to: 'catalog#index', defaults: { format: :json }
       get "homepage", to: "homepage#show"
       resources :hero_sliders, only: [:index], path: "hero-sliders"
       resources :promo_popups, only: [:index], path: "promo-popups"
@@ -91,7 +91,7 @@ Rails.application.routes.draw do
 
   spa = ->(req) {
     path = req.path
-    %w[/api /rails /health /up /ws /sockjs /users /sitemap.xml].none? { |p| path.start_with?(p) }
+    %w[/api /rails /health /up /ws /sockjs /users /sitemap.xml /facebook_cat_feed.xml].none? { |p| path.start_with?(p) }
   }
   root "spa#index", constraints: spa
   get "*path", to: "spa#index", constraints: spa

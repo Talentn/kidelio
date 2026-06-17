@@ -72,6 +72,7 @@ module Api
         if detail
           json[:description] = product.description
           json[:rating] = rating_json(product)
+          json[:reviews_preview] = reviews_preview_json(product)
           json[:colors] = product.colors.map do |c|
             urls = c.images.map { |img| json_variant_url(img, size: :large) }.compact
             {
@@ -90,6 +91,20 @@ module Api
 
       def rating_json(product)
         product.rating_stats.merge(user_stars: visitor_review(product)&.stars)
+      end
+
+      def reviews_preview_json(product)
+        product.reviews
+          .includes(:user)
+          .order(created_at: :desc)
+          .limit(5)
+          .map do |review|
+            {
+              stars: review.stars,
+              created_at: review.created_at.iso8601,
+              author_name: review.user&.name.presence || "Client Kidelio"
+            }
+          end
       end
 
       def visitor_review(product)

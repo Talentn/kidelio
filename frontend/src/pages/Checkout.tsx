@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { trackInitiateCheckout, trackPromoCodeApplied, trackPurchase } from '../lib/metaPixel'
 import { clearUtms, getStoredUtms } from '../lib/utm'
+import { SEO } from '../components/SEO'
 
 const GOVERNORATES = [
   'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan',
@@ -212,6 +213,7 @@ export function Checkout() {
   if (items.length === 0) {
     return (
       <div className="page-wrap py-16 text-center">
+        <SEO title="Commande" url="/checkout" noIndex />
         <ShoppingCart size={48} strokeWidth={1.5} className="text-gray-300 mx-auto mb-4" />
         <h1 className="font-display font-semibold text-xl mb-4">Votre panier est vide</h1>
         <a href="/produits" className="btn-primary">Voir la boutique</a>
@@ -221,6 +223,7 @@ export function Checkout() {
 
   return (
     <div className="page-wrap py-6 md:py-10">
+      <SEO title="Commande" url="/checkout" noIndex />
       <div className="flex items-center gap-3 mb-8 text-sm font-semibold">
         <span className="text-gray-400">Panier</span>
         <div className="flex-1 h-px bg-gray-200" />

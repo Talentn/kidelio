@@ -12,6 +12,8 @@ import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent } from '../lib/metaPixel'
 import { SEO } from '../components/SEO'
 import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
+import { useStore } from '../context/StoreContext'
+import { buildProductJsonLd, type ProductReviewPreview } from '../lib/productSchema'
 
 type ColorSize = { size: string; stock: number }
 
@@ -41,6 +43,7 @@ type Product = {
   category?: { id: number; name: string; slug: string }
   colors?: ProductColor[]
   rating?: ProductRating
+  reviews_preview?: ProductReviewPreview[]
 }
 
 export function ProductDetail() {
@@ -63,6 +66,7 @@ export function ProductDetail() {
   const { addItem } = useCart()
   const { openCart } = useUI()
   const { isFavorite, toggle } = useFavorites()
+  const { config: storeConfig } = useStore()
 
   const sortedColors = useMemo(
     () =>
@@ -179,6 +183,7 @@ export function ProductDetail() {
   if (!product) {
     return (
       <div className="page-wrap py-16 text-center">
+        <SEO title="Produit introuvable" noIndex />
         <Frown size={48} strokeWidth={1.5} className="text-gray-300 mx-auto mb-4" />
         <h1 className="font-display font-semibold text-2xl mb-4">Produit introuvable</h1>
         <Link to="/produits" className="btn-primary">Retour à la boutique</Link>
@@ -223,38 +228,12 @@ export function ProductDetail() {
   const selectedSize = availableSizes.find((s) => s.size === size)
 
   const productImage = gallery[0] ?? product.image_urls[0]
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    description: product.description,
-    image: productImage ? (productImage.startsWith('http') ? productImage : `https://kideliowear.com${productImage}`) : 'https://kideliowear.com/kidelio-logo.png',
-    sku: String(product.id),
-    url: `https://kideliowear.com/produits/${product.slug}`,
-    brand: { '@type': 'Brand', name: 'Kidelio' },
-    ...(product.category && {
-      category: product.category.name,
-    }),
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'TND',
-      price: Number(product.effective_price).toFixed(3),
-      availability: product.in_stock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-      url: `https://kideliowear.com/produits/${product.slug}`,
-      seller: { '@type': 'Organization', name: 'Kidelio' },
-    },
-    ...(rating.count > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: rating.average,
-        reviewCount: rating.count,
-        bestRating: 5,
-        worstRating: 1,
-      },
-    }),
-  }
+  const productJsonLd = buildProductJsonLd(
+    product,
+    rating,
+    product.reviews_preview ?? [],
+    storeConfig?.shipping_cost ?? 7,
+  )
 
   return (
     <div className="page-wrap py-6 md:py-10">

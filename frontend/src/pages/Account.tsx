@@ -4,6 +4,7 @@ import { Package, Star, ChevronRight, Clock, LogOut, UserCircle, ShoppingBag, Me
 import { useAuth } from '../context/AuthContext'
 import { api, peekCacheV1 } from '../api/client'
 import { ORDER_STATUS_STYLES, orderStatusLabel } from '../lib/orderStatus'
+import { SEO } from '../components/SEO'
 
 type Order = {
   order_number: string
@@ -43,6 +44,7 @@ export function Account() {
   if (!user) {
     return (
       <div className="page-wrap py-16 text-center animate-fade-in">
+        <SEO title="Mon compte" url="/compte" noIndex />
         <div className="w-24 h-24 bg-brand-100 text-brand-400 rounded-full flex items-center justify-center mx-auto mb-6">
           <UserCircle size={44} strokeWidth={1.5} />
         </div>
@@ -55,6 +57,7 @@ export function Account() {
 
   return (
     <div className="page-wrap py-6 md:py-10 animate-fade-in">
+      <SEO title="Mon compte" url="/compte" noIndex />
       <div className="bg-gradient-to-r from-brand-600 to-brand-500 rounded-3xl p-6 md:p-8 mb-8 text-white">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0">

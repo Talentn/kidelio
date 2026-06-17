@@ -71,7 +71,7 @@ export function Rewards() {
 
   return (
     <div className="page-wrap py-8 md:py-10">
-      <SEO title="Mes récompenses" description="Programme fidélité Kidelio — gagnez des points et des avantages." />
+      <SEO title="Mes récompenses" description="Programme fidélité Kidelio — gagnez des points et des avantages." url="/recompenses" noIndex />
 
       <div className="mb-8">
         <h1 className="font-display font-semibold text-2xl md:text-3xl text-ink mb-2">Mes récompenses</h1>
