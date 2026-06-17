@@ -26,4 +26,18 @@ module MetaCatalogIds
       size_label: item.size_label
     )
   end
+
+  # First catalog row for a product — matches the default color/size in the feed.
+  def default_content_id_for_product(product)
+    colors = product.colors.sort_by { |c| [c.position || 0, c.id] }
+    color = colors.first
+    return product.id.to_s unless color
+
+    size_rec = color.sizes.min_by { |s| [s.position || 0, s.size.to_s] }
+    content_id(
+      product_id: product.id,
+      color_id: color.id,
+      size_label: size_rec&.size
+    )
+  end
 end

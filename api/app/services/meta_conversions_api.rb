@@ -79,7 +79,7 @@ class MetaConversionsApi
       custom_data: {
         currency:          CURRENCY,
         value:             product.effective_price.to_f.round(3),
-        content_ids:       [product.id.to_s],
+        content_ids:       [MetaCatalogIds.default_content_id_for_product(product)],
         content_type:      "product",
         content_name:      product.name,
         content_category:  product.category&.name.to_s,
