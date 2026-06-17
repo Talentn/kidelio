@@ -6,6 +6,7 @@
  * Bootstrap/init functions live in metaPixelInit.ts.
  */
 
+import { metaCatalogContentId } from './metaCatalogId'
 import { _pixelReady } from './metaPixelInit'
 
 // Re-export init helpers so existing page-component imports keep working.
@@ -108,9 +109,11 @@ export function trackAddToCart(item: {
   quantity: number
   category?: string
   on_promo?: boolean
+  colorId?: number | null
+  sizeLabel?: string | null
 }): void {
   fbq('AddToCart', {
-    content_ids: [String(item.productId)],
+    content_ids: [metaCatalogContentId(item.productId, item.colorId, item.sizeLabel)],
     content_name: item.name,
     content_type: 'product',
     content_category: item.category ?? '',

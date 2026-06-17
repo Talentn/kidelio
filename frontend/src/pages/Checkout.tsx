@@ -4,6 +4,7 @@ import { MapPin, User, Phone, Mail, Tag, CheckCircle, Loader2, Truck, ShoppingCa
 import { api, peekCacheV1 } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { metaCatalogContentId } from '../lib/metaCatalogId'
 import { trackInitiateCheckout, trackPromoCodeApplied, trackPurchase } from '../lib/metaPixel'
 import { clearUtms, getStoredUtms } from '../lib/utm'
 import { SEO } from '../components/SEO'
@@ -87,7 +88,7 @@ export function Checkout() {
     trackInitiateCheckout({
       value: grandTotal,
       numItems: count,
-      contentIds: items.map((i) => String(i.productId)),
+      contentIds: items.map((i) => metaCatalogContentId(i.productId, i.colorId, i.sizeLabel)),
     })
   }, [items, grandTotal, count])
 
@@ -181,7 +182,7 @@ export function Checkout() {
 
     try {
       const purchaseValue = grandTotal
-      const purchaseIds = items.map((i) => String(i.productId))
+      const purchaseIds = items.map((i) => metaCatalogContentId(i.productId, i.colorId, i.sizeLabel))
       const purchaseCount = count
 
       const data = await api<{ order: { order_number: string } }>('/orders', {

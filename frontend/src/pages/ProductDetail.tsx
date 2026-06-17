@@ -208,6 +208,8 @@ export function ProductDetail() {
         quantity: qty,
         category: product.category?.name,
         on_promo: product.on_promo,
+        colorId: selectedColor?.id,
+        sizeLabel: size ?? undefined,
       })
       setAdded(true)
       openCart()
