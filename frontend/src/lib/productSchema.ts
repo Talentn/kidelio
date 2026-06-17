@@ -33,7 +33,7 @@ function buildShippingDetails(shippingCost = 7) {
     '@type': 'OfferShippingDetails',
     shippingRate: {
       '@type': 'MonetaryAmount',
-      value: shippingCost.toFixed(3),
+      value: Number(shippingCost).toFixed(3),
       currency: 'TND',
     },
     shippingDestination: {
