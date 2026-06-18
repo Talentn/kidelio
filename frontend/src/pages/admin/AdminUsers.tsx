@@ -179,7 +179,7 @@ function AddStaffModal({
     email: '',
     phone: '',
     password: '',
-    role: 'client' as UserRole,
+    role: 'admin' as UserRole,
   })
 
   const promotableUsers = useMemo(() => {
@@ -199,7 +199,7 @@ function AddStaffModal({
     setSelectedUserId('')
     setPromoteRole('admin')
     setUserSearch('')
-    setForm({ name: '', email: '', phone: '', password: '', role: 'client' })
+    setForm({ name: '', email: '', phone: '', password: '', role: 'admin' })
   }, [open])
 
   const promoteExisting = async (e: FormEvent) => {
@@ -216,7 +216,7 @@ function AddStaffModal({
         method: 'PATCH',
         body: JSON.stringify({ role: promoteRole }),
       })
-      notify(`${ROLE_LABELS[promoteRole]} ajouté avec succès`)
+      notify(`${ROLE_LABELS[promoteRole]} ajouté — demandez-lui de se reconnecter`)
       onSaved()
       onClose()
     } catch (err: unknown) {
@@ -235,7 +235,7 @@ function AddStaffModal({
         method: 'POST',
         body: JSON.stringify(form),
       })
-      notify('Compte staff créé avec succès')
+      notify('Compte staff créé — la personne peut se connecter avec son email et mot de passe')
       onSaved()
       onClose()
     } catch (err: unknown) {
@@ -336,7 +336,7 @@ function AddStaffModal({
       ) : (
         <form onSubmit={createNew} className="space-y-4">
           <p className="text-sm text-slate-500">
-            Créez un compte client ou staff. Les comptes staff nécessitent un mot de passe pour se connecter.
+            Créez un compte administrateur ou employé. Tous les comptes staff voient le même catalogue et le même tableau de bord.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -385,9 +385,8 @@ function AddStaffModal({
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-brand-300 outline-none"
             >
-              {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
+              <option value="admin">Administrateur</option>
+              <option value="employee">Employé</option>
             </select>
           </div>
 

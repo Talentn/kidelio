@@ -12,12 +12,18 @@ module Api
       end
 
       def create
-        role = create_params[:role].presence || "client"
+        role = create_params[:role].presence || "admin"
         unless User.roles.key?(role)
           return render json: { error: "Rôle invalide" }, status: :unprocessable_entity
         end
 
-        if STAFF_ROLES.include?(role) && create_params[:password].blank?
+        unless STAFF_ROLES.include?(role)
+          return render json: {
+            error: "Seuls les rôles administrateur et employé peuvent être créés depuis le back-office"
+          }, status: :unprocessable_entity
+        end
+
+        if create_params[:password].blank?
           return render json: { error: "Mot de passe requis pour un compte staff" }, status: :unprocessable_entity
         end
 

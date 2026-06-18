@@ -937,6 +937,7 @@ export function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categoryTree, setCategoryTree] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive" | "promo" | "low">("all");
 
@@ -946,9 +947,13 @@ export function AdminProducts() {
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError("");
     apiAdmin<{ products: Product[] }>("/products")
       .then((d) => { setProducts(d.products); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch((err: unknown) => {
+        setLoadError(err instanceof Error ? err.message : "Impossible de charger les produits");
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -1046,6 +1051,17 @@ export function AdminProducts() {
           ))}
         </div>
       </div>
+
+      {loadError && (
+        <Card className="p-4 mb-4 border-red-200 bg-red-50 text-red-700 text-sm font-medium">
+          {loadError}
+          {loadError.includes("Accès refusé") || loadError.includes("Connexion") ? (
+            <span className="block mt-1 font-normal">
+              Vérifiez que le compte a le rôle <strong>Administrateur</strong> ou <strong>Employé</strong>, puis reconnectez-vous.
+            </span>
+          ) : null}
+        </Card>
+      )}
 
       {/* Table */}
       <Card className="overflow-hidden">

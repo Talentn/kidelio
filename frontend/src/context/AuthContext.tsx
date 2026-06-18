@@ -21,6 +21,7 @@ type AuthContextType = {
   logout: () => Promise<void>;
   refresh: () => Promise<User | null>;
   isStaff: boolean;
+  isAdmin: boolean;
 };
 
 const CACHE_KEY = "kidelio_user";
@@ -128,9 +129,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isStaff = !!user && (user.role === "admin" || user.role === "employee");
+  const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, isStaff }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, isStaff, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

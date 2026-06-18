@@ -36,7 +36,7 @@ function Badge({ count }: { count: number }) {
 
 export function AdminLayout() {
   const navigate   = useNavigate()
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const stats      = useAdminStats()
   const [mobileOpen, setMobileOpen] = useState(false)
   const superOps   = isSuperOps(user?.email)
@@ -58,7 +58,7 @@ export function AdminLayout() {
     { to: '/admin/messages',   label: 'Messages',         icon: MessageSquare,  badge: stats.unread_messages },
     { to: '/admin/promos',     label: 'Popups promo',     icon: Megaphone },
     { to: '/admin/codes-promo', label: 'Codes promo',     icon: Ticket },
-    { to: '/admin/utilisateurs', label: 'Utilisateurs',   icon: Users },
+    ...(isAdmin ? [{ to: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users }] : []),
     { to: '/admin/attributs',  label: 'Attributs',        icon: Ruler },
     { to: '/admin/activite',   label: 'Activité',         icon: Activity },
     { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle },

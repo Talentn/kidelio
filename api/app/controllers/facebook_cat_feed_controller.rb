@@ -11,7 +11,7 @@ class FacebookCatFeedController < ApplicationController
   def index
     products = Product.active
       .includes(:category, images_attachments: :blob,
-                colors: { images_attachments: :blob, sizes: [] })
+                colors: { images_attachments: :blob })
       .order(created_at: :desc)
 
     expires_in 30.minutes, public: true
@@ -48,7 +48,6 @@ class FacebookCatFeedController < ApplicationController
                 write_field(xml, :condition, item[:condition])
                 write_field(xml, :brand, item[:brand])
                 write_field(xml, :color, item[:color])
-                write_field(xml, :size, item[:size])
                 write_field(xml, :google_product_category, item[:google_product_category])
                 write_field(xml, :product_type, item[:product_type])
                 write_field(xml, :age_group, item[:age_group])
@@ -84,29 +83,24 @@ class FacebookCatFeedController < ApplicationController
   end
 
   def catalog_items_for_color(product, color)
-    if color.sizes.any?
-      color.sizes.map { |size_rec| catalog_variant_item(product, color, size_rec) }
-    else
-      [catalog_variant_item(product, color, nil)]
-    end.compact
+    [catalog_variant_item(product, color)].compact
   end
 
-  def catalog_variant_item(product, color, size_rec)
+  def catalog_variant_item(product, color)
     image = variant_image_url(product, color)
     return nil unless image.present?
 
-    stock    = variant_stock(color, size_rec, product)
+    stock    = variant_stock(color, product)
     in_stock = stock.positive?
     on_promo = product.on_promo? && product.promo_price.present?
-    title    = variant_title(product.name, color.name, size_rec&.size)
+    title    = variant_title(product.name, color.name)
 
     item = shared_item_fields(product, on_promo:, in_stock:, stock:).merge(
-      id: variant_catalog_id(product, color, size_rec),
+      id: variant_catalog_id(product, color),
       item_group_id: product.id.to_s,
       title: title,
       image_link: image,
       color: color.name,
-      size: size_rec&.size,
       additional_image_links: color_extra_image_urls(color).first(9)
     )
 
@@ -156,31 +150,20 @@ class FacebookCatFeedController < ApplicationController
     }
   end
 
-  def variant_catalog_id(product, color = nil, size_rec = nil)
+  def variant_catalog_id(product, color = nil)
     parts = [product.id.to_s]
     return parts.join("-") unless color
 
     parts << "c#{color.id}"
-    parts << slug_size(size_rec.size) if size_rec
     parts.join("-")
   end
 
-  def slug_size(label)
-    label.to_s.parameterize.presence || "one-size"
+  def variant_title(product_name, color_name)
+    [product_name, color_name].join(" — ")
   end
 
-  def variant_title(product_name, color_name, size_label)
-    parts = [product_name, color_name]
-    parts << size_label if size_label.present?
-    parts.join(" — ")
-  end
-
-  def variant_stock(color, size_rec, product)
-    if size_rec
-      size_rec.stock
-    else
-      color.total_stock || product.stock
-    end
+  def variant_stock(color, product)
+    color.total_stock || product.stock
   end
 
   def variant_image_url(product, color)

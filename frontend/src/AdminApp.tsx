@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireStaff } from "./components/admin/RequireStaff";
+import { RequireAdmin } from "./components/admin/RequireAdmin";
 import { RequireSuperOps } from "./components/admin/RequireSuperOps";
 
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then((m) => ({ default: m.Dashboard })));
@@ -51,7 +52,9 @@ export default function AdminApp() {
             <Route path="attributs" element={<AdminAttributes />} />
             <Route path="promos" element={<AdminPromos />} />
             <Route path="codes-promo" element={<AdminPromoCodes />} />
-            <Route path="utilisateurs" element={<AdminUsers />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="utilisateurs" element={<AdminUsers />} />
+            </Route>
             <Route path="activite" element={<ActivityLogs />} />
             <Route path="panier-live" element={<AdminLiveCart />} />
             <Route path="chat" element={<AdminChat />} />
