@@ -5,7 +5,7 @@ module Api
       ADMIN_ACTIONS = %i[
         chat_admin_queue chat_admin_archives chat_admin_room chat_admin_delete
         chat_admin_join chat_admin_message chat_admin_close
-        cart_admin_events favorites_admin_events
+        cart_admin_events favorites_admin_events tracking_admin_events
       ].freeze
 
       before_action :require_staff!, only: ADMIN_ACTIONS
@@ -64,6 +64,14 @@ module Api
 
       def favorites_admin_events
         relay("/favorites/admin/events")
+      end
+
+      def tracking_events
+        relay("/tracking/events")
+      end
+
+      def tracking_admin_events
+        relay("/tracking/admin/events")
       end
 
       private

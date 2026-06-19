@@ -169,3 +169,34 @@ func (h *FavoritesHub) Broadcast(msg any) {
 		c.Write(msg)
 	}
 }
+
+// ── User tracking hub ─────────────────────────────────────────────────────────
+
+type TrackingHub struct {
+	mu     sync.RWMutex
+	admins map[*Client]bool
+}
+
+var Tracking = &TrackingHub{
+	admins: make(map[*Client]bool),
+}
+
+func (h *TrackingHub) Register(c *Client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.admins[c] = true
+}
+
+func (h *TrackingHub) Unregister(c *Client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.admins, c)
+}
+
+func (h *TrackingHub) Broadcast(msg any) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.admins {
+		c.Write(msg)
+	}
+}

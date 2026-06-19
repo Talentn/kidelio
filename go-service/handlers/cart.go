@@ -13,10 +13,14 @@ import (
 
 type cartEventPayload struct {
 	Action      string  `json:"action"`
+	SessionID   string  `json:"session_id"`
 	ProductID   int64   `json:"product_id"`
 	ProductName string  `json:"product_name"`
 	Quantity    int     `json:"quantity"`
 	Price       float64 `json:"price"`
+	ColorID     int64   `json:"color_id"`
+	ColorLabel  string  `json:"color_label"`
+	SizeLabel   string  `json:"size_label"`
 }
 
 func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent {
@@ -25,10 +29,7 @@ func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent
 	}
 
 	user, _ := middleware.ValidateSession(r)
-	sessionID := r.Header.Get("X-Session-Id")
-	if sessionID == "" {
-		sessionID = uuid.NewString()
-	}
+	sessionID := sessionIDFromRequest(r, payload.SessionID)
 
 	event := &store.CartEvent{
 		ID:          uuid.NewString(),
@@ -37,9 +38,14 @@ func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent
 		ProductName: payload.ProductName,
 		Quantity:    payload.Quantity,
 		Price:       payload.Price,
+		ColorLabel:  payload.ColorLabel,
+		SizeLabel:   payload.SizeLabel,
 	}
 	if payload.ProductID != 0 {
 		event.ProductID = &payload.ProductID
+	}
+	if payload.ColorID != 0 {
+		event.ColorID = &payload.ColorID
 	}
 	if user != nil {
 		event.UserID = &user.ID

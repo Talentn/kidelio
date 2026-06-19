@@ -9,6 +9,7 @@ import { UIProvider } from "./context/UIContext";
 import { Layout } from "./components/Layout";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { UserActivityTracker } from "./components/UserActivityTracker";
 import { DeferredWidgets } from "./components/DeferredWidgets";
 import { CartToastProvider } from "./context/CartToastContext";
 import { Home } from "./pages/Home";
@@ -49,6 +50,7 @@ function App() {
           <UIProvider>
             <BrowserRouter>
               <ScrollToTop />
+              <UserActivityTracker />
               <DeferredWidgets />
               <RouteErrorBoundary>
               <Suspense fallback={<PageLoader />}>

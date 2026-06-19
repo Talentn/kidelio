@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { metaCatalogContentId } from '../lib/metaCatalogId'
 import { trackInitiateCheckout, trackPromoCodeApplied, trackPurchase } from '../lib/metaPixel'
+import { trackCheckoutStart } from '../lib/userTracking'
 import { clearUtms, getStoredUtms } from '../lib/utm'
 import { SEO } from '../components/SEO'
 
@@ -90,6 +91,7 @@ export function Checkout() {
       numItems: count,
       contentIds: items.map((i) => metaCatalogContentId(i.productId, i.colorId, i.sizeLabel)),
     })
+    trackCheckoutStart(count, grandTotal)
   }, [items, grandTotal, count])
 
   useEffect(() => {

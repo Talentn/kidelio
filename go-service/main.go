@@ -58,6 +58,11 @@ func main() {
 	mux.HandleFunc("GET /favorites/admin/ws", handlers.FavoritesAdminWS)
 	mux.HandleFunc("GET /favorites/admin/events", middleware.RequireStaff(handlers.GetFavoriteEvents))
 
+	// ── User activity tracking ────────────────────────────────────────────────
+	mux.HandleFunc("POST /tracking/events", middleware.RateLimit(180, time.Minute, handlers.UserEventHTTP))
+	mux.HandleFunc("GET /tracking/admin/ws", handlers.TrackingAdminWS)
+	mux.HandleFunc("GET /tracking/admin/events", middleware.RequireStaff(handlers.GetUserEvents))
+
 	// ── Health ────────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"ok":true}`))

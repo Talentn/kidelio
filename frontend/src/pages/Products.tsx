@@ -9,6 +9,7 @@ type Product = HomeProduct
 
 import { findShopCategory, shopCategoryRootId, type ShopCategory } from '../lib/categories'
 import { trackSearch, trackViewCategory } from '../lib/metaPixel'
+import { trackSearchQuery } from '../lib/userTracking'
 import { SEO } from '../components/SEO'
 
 export function Products() {
@@ -56,7 +57,10 @@ export function Products() {
       .then((d) => {
         setProducts(d.products)
         // Search event
-        if (q) trackSearch(q, d.products.length)
+        if (q) {
+          trackSearch(q, d.products.length)
+          trackSearchQuery(q, d.products.length)
+        }
       })
       .finally(() => setFetching(false))
   }, [productsPath]) // eslint-disable-line react-hooks/exhaustive-deps

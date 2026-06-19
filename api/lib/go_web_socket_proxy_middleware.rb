@@ -1,6 +1,6 @@
 # Proxies WebSocket upgrades on /api/v1/{chat,cart,favorites}/... to go-service.
 class GoWebSocketProxyMiddleware
-  WS_PATH = %r{\A/api/v1/(chat/ws/|chat/admin/ws\z|cart/ws\z|cart/admin/ws\z|favorites/ws\z|favorites/admin/ws\z)}.freeze
+  WS_PATH = %r{\A/api/v1/(chat/ws/|chat/admin/ws\z|cart/ws\z|cart/admin/ws\z|favorites/ws\z|favorites/admin/ws\z|tracking/admin/ws\z)}.freeze
 
   def initialize(app)
     @app = app

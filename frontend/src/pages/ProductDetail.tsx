@@ -10,6 +10,7 @@ import { useCart } from '../context/CartContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useUI } from '../context/UIContext'
 import { trackAddToCart, trackViewContent, isPixelReady, onPixelReady } from '../lib/metaPixel'
+import { trackProductView } from '../lib/userTracking'
 import { SEO } from '../components/SEO'
 import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
 import { useStore } from '../context/StoreContext'
@@ -116,6 +117,11 @@ export function ProductDetail() {
         window.requestAnimationFrame(scrollWindowToTop)
       })
   }, [slug, productPath])
+
+  useEffect(() => {
+    if (!product) return
+    trackProductView(product.id, product.name, product.slug)
+  }, [product?.id])
 
   useEffect(() => {
     if (!product) return

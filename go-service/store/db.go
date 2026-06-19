@@ -69,8 +69,32 @@ func migrate() {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_favorite_events_time ON favorite_events(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS user_events (
+		id           TEXT PRIMARY KEY,
+		user_id      INTEGER,
+		session_id   TEXT NOT NULL,
+		event_type   TEXT NOT NULL,
+		path         TEXT,
+		product_id   INTEGER,
+		product_name TEXT,
+		metadata     TEXT,
+		created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_user_events_time ON user_events(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events(event_type, created_at DESC);
 	`
 	if _, err := DB.Exec(schema); err != nil {
 		log.Fatalf("store: migrate: %v", err)
+	}
+
+	// Add cart variant columns on existing databases (ignore duplicate column errors).
+	for _, stmt := range []string{
+		`ALTER TABLE cart_events ADD COLUMN color_id INTEGER`,
+		`ALTER TABLE cart_events ADD COLUMN color_label TEXT`,
+		`ALTER TABLE cart_events ADD COLUMN size_label TEXT`,
+	} {
+		_, _ = DB.Exec(stmt)
 	}
 }

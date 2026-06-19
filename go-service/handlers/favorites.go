@@ -13,6 +13,7 @@ import (
 
 type favoriteEventPayload struct {
 	Action      string `json:"action"`
+	SessionID   string `json:"session_id"`
 	ProductID   int64  `json:"product_id"`
 	ProductName string `json:"product_name"`
 }
@@ -23,10 +24,7 @@ func recordFavoriteEvent(r *http.Request, payload favoriteEventPayload) *store.F
 	}
 
 	user, _ := middleware.ValidateSession(r)
-	sessionID := r.Header.Get("X-Session-Id")
-	if sessionID == "" {
-		sessionID = uuid.NewString()
-	}
+	sessionID := sessionIDFromRequest(r, payload.SessionID)
 
 	event := &store.FavoriteEvent{
 		ID:          uuid.NewString(),

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { apiV1, peekCacheV1 } from "../lib/api";
 import { broadcast, onBroadcast } from "../lib/broadcast";
-import { goWsUrl, goWsEnabled, goTrack } from "../lib/goApi";
+import { goTrack, liveSessionId } from "../lib/goApi";
 import { useCartToast } from "./CartToastContext";
 import { useAuth } from "./AuthContext";
 
@@ -77,6 +77,15 @@ function variantPayload(variant?: CartVariant) {
   };
 }
 
+function matchCartItem(items: CartItem[], productId: number, variant?: CartVariant): CartItem | undefined {
+  return items.find((i) => {
+    if (i.productId !== productId) return false;
+    if (variant?.colorId != null && i.colorId !== variant.colorId) return false;
+    if (variant?.sizeLabel != null && i.sizeLabel !== variant.sizeLabel) return false;
+    return true;
+  });
+}
+
 function readCartCache(): CartItem[] | null {
   try {
     const raw = localStorage.getItem(CART_CACHE_KEY);
@@ -145,35 +154,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [refresh]);
 
-  // ── Go cart event tracker ─────────────────────────────────────────────────
-  const cartWsRef = useRef<WebSocket | null>(null)
+  // ── Go cart event tracker (HTTP — reliable in dev & prod) ───────────────
   const trackCart = useCallback((action: string, item?: CartItem | null, qty?: number) => {
-    const payload = {
+    goTrack("/cart/events", {
+      session_id: liveSessionId(),
       action,
-      product_id:   item?.productId,
+      product_id: item?.productId,
       product_name: item?.name,
-      quantity:     qty ?? item?.quantity ?? 1,
-      price:        item?.price,
-    }
-    try {
-      if (!goWsEnabled()) {
-        goTrack("/cart/events", payload)
-        return
-      }
-      if (!cartWsRef.current || cartWsRef.current.readyState !== WebSocket.OPEN) {
-        const ws = new WebSocket(goWsUrl("/cart/ws"))
-        ws.onclose = () => { cartWsRef.current = null }
-        cartWsRef.current = ws
-      }
-      const body = JSON.stringify(payload)
-      const ws = cartWsRef.current!
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(body)
-      } else {
-        ws.addEventListener("open", () => ws.send(body), { once: true })
-      }
-    } catch { /* non-critical */ }
-  }, [])
+      quantity: qty ?? item?.quantity ?? 1,
+      price: item?.price,
+      color_id: item?.colorId,
+      color_label: item?.colorLabel,
+      size_label: item?.sizeLabel,
+    });
+  }, []);
 
   const addItem = async (productId: number, qty = 1, variant?: CartVariant) => {
     const data = await apiV1<CartResponse>("/cart/items", {
@@ -183,13 +177,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const newItems = mapItems(data.items)
     setItems(newItems)
     broadcast({ type: "cart", action: "changed" });
-    const added = newItems.find(i => i.productId === productId)
+    const added = matchCartItem(newItems, productId, variant)
     trackCart("add", added, qty)
     if (added) showToast(added.name, added.imageUrl)
   };
 
   const removeItem = async (productId: number, variant?: CartVariant) => {
-    const removed = items.find(i => i.productId === productId)
+    const removed = matchCartItem(items, productId, variant)
     const data = await apiV1<CartResponse>(`/cart/items/${productId}`, {
       method: "DELETE",
       body: JSON.stringify(variantPayload(variant)),
@@ -206,7 +200,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
-    const updated = items.find(i => i.productId === productId)
+    const updated = matchCartItem(items, productId, variant)
     trackCart("update", updated, quantity)
   };
 

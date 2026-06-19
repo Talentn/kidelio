@@ -20,8 +20,10 @@ Rails.application.routes.draw do
       post "chat/admin/rooms/:room_id/close", to: "go_proxy#chat_admin_close"
       post "cart/events", to: "go_proxy#cart_events"
       post "favorites/events", to: "go_proxy#favorites_events"
+      post "tracking/events", to: "go_proxy#tracking_events"
       get "cart/admin/events", to: "go_proxy#cart_admin_events"
       get "favorites/admin/events", to: "go_proxy#favorites_admin_events"
+      get "tracking/admin/events", to: "go_proxy#tracking_admin_events"
 
       get "store", to: "config#show"
       get "config", to: "config#show" # legacy alias (often blocked by ad blockers)
