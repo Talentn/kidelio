@@ -363,6 +363,7 @@ export function AdminLiveCart() {
                         <span className="text-teal-600 font-semibold">
                           {' '}· {formatDurationMs(Number(parsed.duration_ms))}
                           {parsed.reason === 'close' ? ' (onglet fermé)' : ''}
+                          {parsed.reason === 'background' ? ' (app en arrière-plan)' : ''}
                         </span>
                       )}
                       {ev.event_type === 'search' && parsed?.query != null && ` · « ${String(parsed.query)} » (${parsed.result_count ?? '?'} résultats)`}

@@ -72,7 +72,7 @@ export function trackPageView(pathname: string) {
 export function trackPageLeave(
   pathname: string,
   durationMs: number,
-  reason: 'navigation' | 'close',
+  reason: 'navigation' | 'close' | 'background',
   useBeacon = false,
 ) {
   if (pathname.startsWith('/admin')) return

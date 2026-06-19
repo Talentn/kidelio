@@ -65,14 +65,28 @@ export function goTrack(path: string, body: unknown) {
   goPost(path, body, { 'X-Session-Id': liveSessionId() }).catch(() => {})
 }
 
-/** Reliable send on tab close / navigation away (fetch may be cancelled). */
+/** Reliable send on tab close / background (fetch is cancelled on mobile without this). */
 export function goTrackBeacon(path: string, body: Record<string, unknown>) {
   const payload = JSON.stringify({ ...body, session_id: liveSessionId() })
   const url = goUrl(path)
+
   if (typeof navigator.sendBeacon === 'function') {
     const ok = navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }))
     if (ok) return
   }
+
+  // fetch keepalive — works on iOS Safari when sendBeacon fails or is unavailable
+  try {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-Id': liveSessionId() },
+      body: payload,
+      credentials: 'include',
+      keepalive: true,
+    }).catch(() => {})
+    return
+  } catch { /* fall through */ }
+
   goTrack(path, body)
 }
 
