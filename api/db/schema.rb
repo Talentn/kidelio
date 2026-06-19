@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_19_200000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -68,6 +68,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_120000) do
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["user_id"], name: "index_addresses_on_user_id"
+  end
+
+  create_table "cart_live_events", force: :cascade do |t|
+    t.string "action", null: false
+    t.integer "color_id"
+    t.string "color_label"
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.decimal "price", precision: 10, scale: 3
+    t.integer "product_id"
+    t.string "product_name"
+    t.integer "quantity", default: 1, null: false
+    t.string "session_id", null: false
+    t.string "size_label"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id"
+    t.index ["action"], name: "index_cart_live_events_on_action"
+    t.index ["created_at"], name: "index_cart_live_events_on_created_at"
+    t.index ["product_id"], name: "index_cart_live_events_on_product_id"
+    t.index ["session_id"], name: "index_cart_live_events_on_session_id"
+    t.index ["user_id"], name: "index_cart_live_events_on_user_id"
   end
 
   create_table "categories", force: :cascade do |t|
@@ -262,6 +284,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_16_120000) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "activity_logs", "users"
   add_foreign_key "addresses", "users"
+  add_foreign_key "cart_live_events", "products"
+  add_foreign_key "cart_live_events", "users"
   add_foreign_key "categories", "categories", column: "parent_id"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"

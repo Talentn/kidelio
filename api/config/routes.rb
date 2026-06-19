@@ -81,6 +81,7 @@ Rails.application.routes.draw do
       resources :categories, only: %i[index create update destroy]
       resources :size_attributes, only: %i[index create update destroy], path: "size-attributes"
       resources :activity_logs, only: [:index], path: "activity-logs"
+      resources :cart_live_events, only: [:index], path: "cart-live-events"
       resources :contact_messages, only: %i[index update], path: "contact-messages"
       resources :promo_popups, path: "promo-popups"
       resources :promo_codes, path: "promo-codes", only: %i[index create update destroy]

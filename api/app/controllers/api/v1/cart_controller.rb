@@ -18,7 +18,7 @@ module Api
           color_label: params[:color_label],
           color_id:    params[:color_id]
         )
-        enqueue_live_cart_event("add", product, quantity: quantity)
+        record_live_cart_event("add", product, quantity: quantity)
         if marketing_consent?
           MetaPixelEventJob.perform_later(
             :add_to_cart,
@@ -44,7 +44,7 @@ module Api
           size_label:  params[:size_label],
           color_id:    params[:color_id]
         )
-        enqueue_live_cart_event("update", product, quantity: params[:quantity].to_i)
+        record_live_cart_event("update", product, quantity: params[:quantity].to_i)
         render json: cart_json
       rescue ArgumentError => e
         render json: { error: e.message }, status: :unprocessable_entity
@@ -58,35 +58,31 @@ module Api
           size_label:  params[:size_label],
           color_id:    params[:color_id]
         )
-        enqueue_live_cart_event("remove", product)
+        record_live_cart_event("remove", product)
         render json: cart_json
       end
 
       def destroy
         cart.clear
-        enqueue_live_cart_event("clear")
+        record_live_cart_event("clear")
         render json: cart_json
       end
 
       private
 
-      def enqueue_live_cart_event(event, product = nil, quantity: 1)
-        job_args = {
-          product_id: product&.id,
-          product_name: product&.name,
+      def record_live_cart_event(event, product = nil, quantity: 1)
+        LiveActivityLogger.record_cart_event(
+          event: event,
+          session_id: live_session_id,
+          user: Current.user,
+          product: product,
           quantity: quantity,
           price: product&.effective_price,
           color_id: params[:color_id],
           color_label: params[:color_label],
           size_label: params[:size_label],
-          session_id: live_session_id,
-          user_id: Current.user&.id
-        }
-        if Rails.env.development?
-          LiveCartEventJob.perform_now(event, **job_args)
-        else
-          LiveCartEventJob.perform_later(event, **job_args)
-        end
+          rack_request: request
+        )
       end
 
       def live_session_id

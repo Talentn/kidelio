@@ -65,6 +65,17 @@ export function goTrack(path: string, body: unknown) {
   goPost(path, body, { 'X-Session-Id': liveSessionId() }).catch(() => {})
 }
 
+/** Reliable send on tab close / navigation away (fetch may be cancelled). */
+export function goTrackBeacon(path: string, body: Record<string, unknown>) {
+  const payload = JSON.stringify({ ...body, session_id: liveSessionId() })
+  const url = goUrl(path)
+  if (typeof navigator.sendBeacon === 'function') {
+    const ok = navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }))
+    if (ok) return
+  }
+  goTrack(path, body)
+}
+
 export async function goDelete<T = { ok: boolean }>(path: string): Promise<T> {
   const res = await goFetch(path, { method: 'DELETE', credentials: 'include' })
   if (!res.ok) throw new Error(await res.text())

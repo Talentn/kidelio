@@ -4,7 +4,9 @@ import {
   Eye, Search, CreditCard, Globe, AlertTriangle,
 } from 'lucide-react'
 import { AdminPage } from '../../components/admin/ui'
+import { apiAdmin } from '../../lib/api'
 import { goWsUrl, goGet, goWsEnabled } from '../../lib/goApi'
+import { formatDurationMs } from '../../lib/userTracking'
 
 type CartEvent = {
   id: string
@@ -74,6 +76,7 @@ const FAV_ACTION_COLORS: Record<string, string> = {
 
 const USER_EVENT_META: Record<string, { label: string; color: string; icon: typeof Globe }> = {
   page_view: { label: 'Page visitée', color: 'bg-blue-100 text-blue-700', icon: Globe },
+  page_leave: { label: 'Temps sur page', color: 'bg-teal-100 text-teal-700', icon: Globe },
   product_view: { label: 'Produit consulté', color: 'bg-indigo-100 text-indigo-700', icon: Eye },
   search: { label: 'Recherche', color: 'bg-violet-100 text-violet-700', icon: Search },
   checkout_start: { label: 'Checkout', color: 'bg-orange-100 text-orange-700', icon: CreditCard },
@@ -105,31 +108,31 @@ function variantLine(ev: CartEvent) {
 
 export function AdminLiveCart() {
   const [tab, setTab] = useState<Tab>('all')
-  const [serviceError, setServiceError] = useState(false)
+  const [goServiceError, setGoServiceError] = useState(false)
+  const [cartError, setCartError] = useState(false)
 
   const [cartEvents, setCartEvents] = useState<CartEvent[]>([])
   const [favEvents, setFavEvents] = useState<FavoriteEvent[]>([])
   const [userEvents, setUserEvents] = useState<UserEvent[]>([])
 
-  const [cartWsLive, setCartWsLive] = useState(false)
   const [favWsLive, setFavWsLive] = useState(false)
 
   const refreshCart = useCallback(() =>
-    goGet<{ events: CartEvent[] }>('/cart/admin/signals?limit=150')
-      .then((data) => { setCartEvents(data.events || []); setServiceError(false) })
-      .catch(() => setServiceError(true)),
+    apiAdmin<{ events: CartEvent[] }>('/cart-live-events?limit=150')
+      .then((data) => { setCartEvents(data.events || []); setCartError(false) })
+      .catch(() => setCartError(true)),
   [])
 
   const refreshFavorites = useCallback(() =>
     goGet<{ events: FavoriteEvent[] }>('/favorites/admin/events?limit=150')
-      .then((data) => { setFavEvents(data.events || []); setServiceError(false) })
-      .catch(() => setServiceError(true)),
+      .then((data) => { setFavEvents(data.events || []); setGoServiceError(false) })
+      .catch(() => setGoServiceError(true)),
   [])
 
   const refreshUserEvents = useCallback(() =>
     goGet<{ events: UserEvent[] }>('/tracking/admin/events?limit=150')
-      .then((data) => { setUserEvents(data.events || []); setServiceError(false) })
-      .catch(() => setServiceError(true)),
+      .then((data) => { setUserEvents(data.events || []); setGoServiceError(false) })
+      .catch(() => setGoServiceError(true)),
   [])
 
   const refreshAll = useCallback(async () => {
@@ -143,23 +146,6 @@ export function AdminLiveCart() {
     const id = setInterval(refreshAll, ms)
     return () => clearInterval(id)
   }, [refreshAll])
-
-  // Optional live WebSocket for cart
-  useEffect(() => {
-    if (!goWsEnabled()) return
-    const ws = new WebSocket(goWsUrl('/cart/admin/ws'))
-    ws.onopen = () => setCartWsLive(true)
-    ws.onerror = () => ws.close()
-    ws.onclose = () => setCartWsLive(false)
-    ws.onmessage = (e) => {
-      const data = JSON.parse(e.data)
-      if (data.type === 'history') setCartEvents(data.events || [])
-      else if (data.type === 'cart_event') {
-        setCartEvents((prev) => [{ ...data.event, user_name: data.user_name }, ...prev].slice(0, 200))
-      }
-    }
-    return () => ws.close()
-  }, [])
 
   // Optional live WebSocket for favorites
   useEffect(() => {
@@ -219,7 +205,8 @@ export function AdminLiveCart() {
     ...userEvents.map((e) => e.session_id),
   ]).size
 
-  const wsConnected = !goWsEnabled() || cartWsLive || favWsLive
+  const wsConnected = !goWsEnabled() || favWsLive
+  const statusOk = !cartError && !goServiceError
 
   return (
     <AdminPage
@@ -227,9 +214,9 @@ export function AdminLiveCart() {
       subtitle="Panier (taille & couleur), favoris, navigation et checkout"
       actions={
         <div className="flex items-center gap-3">
-          <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${wsConnected && !serviceError ? 'bg-green-100 text-green-700' : serviceError ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${statusOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
             <Circle size={7} fill="currentColor" />
-            {serviceError ? 'Service indisponible' : wsConnected ? 'En direct' : 'Polling actif'}
+            {statusOk ? (wsConnected ? 'En direct' : 'Polling actif') : 'Partiellement indisponible'}
           </span>
           <button onClick={refreshAll} className="btn-sm btn-secondary flex items-center gap-1.5">
             <RefreshCw size={14} /> Actualiser
@@ -237,12 +224,22 @@ export function AdminLiveCart() {
         </div>
       }
     >
-      {serviceError && (
+      {cartError && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Impossible de charger les événements panier.</p>
+            <p className="text-red-800 mt-0.5">Vérifiez que la migration <code className="text-xs">cart_live_events</code> a été exécutée (<code className="text-xs">rails db:migrate</code>).</p>
+          </div>
+        </div>
+      )}
+
+      {goServiceError && (
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">Le service temps réel (Go) ne répond pas.</p>
-            <p className="text-amber-800 mt-0.5">Vérifiez que go-service tourne sur le port 3010. Les événements panier sont enregistrés via HTTP dès que le service est disponible.</p>
+            <p className="text-amber-800 mt-0.5">Favoris et navigation nécessitent go-service. Le panier est enregistré par Rails et fonctionne sans Go.</p>
           </div>
         </div>
       )}
@@ -362,6 +359,12 @@ export function AdminLiveCart() {
                     </p>
                     <p className="text-xs text-gray-400">
                       {actorLabel(ev)}
+                      {ev.event_type === 'page_leave' && parsed?.duration_ms != null && (
+                        <span className="text-teal-600 font-semibold">
+                          {' '}· {formatDurationMs(Number(parsed.duration_ms))}
+                          {parsed.reason === 'close' ? ' (onglet fermé)' : ''}
+                        </span>
+                      )}
                       {ev.event_type === 'search' && parsed?.query != null && ` · « ${String(parsed.query)} » (${parsed.result_count ?? '?'} résultats)`}
                       {ev.event_type === 'checkout_start' && parsed != null && ` · ${parsed.item_count ?? '?'} article(s) · ${Number(parsed.total ?? 0).toFixed(3)} TND`}
                     </p>
