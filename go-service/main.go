@@ -45,11 +45,13 @@ func main() {
 
 	// ── Cart events ──────────────────────────────────────────────────────────
 	// Browser: send cart events (HTTP when WebSocket unavailable)
+	mux.HandleFunc("POST /cart/signals", middleware.RateLimit(120, time.Minute, handlers.CartSignalHTTP))
 	mux.HandleFunc("POST /cart/events", middleware.RateLimit(120, time.Minute, handlers.CartEventHTTP))
 	mux.HandleFunc("GET /cart/ws", handlers.CartEventWS)
 	// Admin: subscribe to live feed
 	mux.HandleFunc("GET /cart/admin/ws", handlers.CartAdminWS)
 	// Admin: REST history
+	mux.HandleFunc("GET /cart/admin/signals", middleware.RequireStaff(handlers.GetCartSignals))
 	mux.HandleFunc("GET /cart/admin/events", middleware.RequireStaff(handlers.GetCartEvents))
 
 	// ── Favorite events ──────────────────────────────────────────────────────

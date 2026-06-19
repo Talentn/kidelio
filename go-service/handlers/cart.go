@@ -13,7 +13,9 @@ import (
 
 type cartEventPayload struct {
 	Action      string  `json:"action"`
+	Event       string  `json:"event"`
 	SessionID   string  `json:"session_id"`
+	UserID      int64   `json:"user_id"`
 	ProductID   int64   `json:"product_id"`
 	ProductName string  `json:"product_name"`
 	Quantity    int     `json:"quantity"`
@@ -23,8 +25,16 @@ type cartEventPayload struct {
 	SizeLabel   string  `json:"size_label"`
 }
 
+func cartEventAction(payload cartEventPayload) string {
+	if payload.Event != "" {
+		return payload.Event
+	}
+	return payload.Action
+}
+
 func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent {
-	if payload.Action == "" {
+	action := cartEventAction(payload)
+	if action == "" {
 		return nil
 	}
 
@@ -34,7 +44,7 @@ func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent
 	event := &store.CartEvent{
 		ID:          uuid.NewString(),
 		SessionID:   sessionID,
-		Action:      payload.Action,
+		Action:      action,
 		ProductName: payload.ProductName,
 		Quantity:    payload.Quantity,
 		Price:       payload.Price,
@@ -49,6 +59,8 @@ func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent
 	}
 	if user != nil {
 		event.UserID = &user.ID
+	} else if payload.UserID != 0 {
+		event.UserID = &payload.UserID
 	}
 
 	_ = store.SaveCartEvent(event)
@@ -64,8 +76,8 @@ func recordCartEvent(r *http.Request, payload cartEventPayload) *store.CartEvent
 	return event
 }
 
-// POST /cart/events — HTTP fallback when WebSocket unavailable
-func CartEventHTTP(w http.ResponseWriter, r *http.Request) {
+// POST /cart/signals — browser or Rails records cart activity (avoid /events — ad blockers)
+func CartSignalHTTP(w http.ResponseWriter, r *http.Request) {
 	var payload cartEventPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || recordCartEvent(r, payload) == nil {
 		http.Error(w, `{"error":"invalid event"}`, http.StatusBadRequest)
@@ -73,6 +85,11 @@ func CartEventHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"ok": true})
+}
+
+// POST /cart/events — legacy alias
+func CartEventHTTP(w http.ResponseWriter, r *http.Request) {
+	CartSignalHTTP(w, r)
 }
 
 // ── WS /cart/ws — browser sends add/remove events ─────────────────────────────
@@ -135,8 +152,12 @@ func CartAdminWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ── GET /cart/admin/events?limit=100 — REST fallback ─────────────────────────
+// GET /cart/admin/signals?limit=100 — REST fallback (admin history)
+func GetCartSignals(w http.ResponseWriter, r *http.Request) {
+	GetCartEvents(w, r)
+}
 
+// GET /cart/admin/events?limit=100 — legacy alias
 func GetCartEvents(w http.ResponseWriter, r *http.Request) {
 	limit := 100
 	if l := r.URL.Query().Get("limit"); l != "" {

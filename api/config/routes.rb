@@ -18,10 +18,12 @@ Rails.application.routes.draw do
       post "chat/admin/rooms/:room_id/join", to: "go_proxy#chat_admin_join"
       post "chat/admin/rooms/:room_id/messages", to: "go_proxy#chat_admin_message"
       post "chat/admin/rooms/:room_id/close", to: "go_proxy#chat_admin_close"
-      post "cart/events", to: "go_proxy#cart_events"
+      post "cart/signals", to: "go_proxy#cart_events"
+      post "cart/events", to: "go_proxy#cart_events" # legacy — often blocked by ad blockers
       post "favorites/events", to: "go_proxy#favorites_events"
       post "tracking/events", to: "go_proxy#tracking_events"
-      get "cart/admin/events", to: "go_proxy#cart_admin_events"
+      get "cart/admin/signals", to: "go_proxy#cart_admin_events"
+      get "cart/admin/events", to: "go_proxy#cart_admin_events" # legacy
       get "favorites/admin/events", to: "go_proxy#favorites_admin_events"
       get "tracking/admin/events", to: "go_proxy#tracking_admin_events"
 

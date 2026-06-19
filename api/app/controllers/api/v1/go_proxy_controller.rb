@@ -51,7 +51,7 @@ module Api
       end
 
       def cart_events
-        relay("/cart/events")
+        relay("/cart/signals")
       end
 
       def favorites_events
@@ -59,7 +59,7 @@ module Api
       end
 
       def cart_admin_events
-        relay("/cart/admin/events")
+        relay("/cart/admin/signals")
       end
 
       def favorites_admin_events

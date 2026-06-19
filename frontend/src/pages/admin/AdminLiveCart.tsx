@@ -115,7 +115,7 @@ export function AdminLiveCart() {
   const [favWsLive, setFavWsLive] = useState(false)
 
   const refreshCart = useCallback(() =>
-    goGet<{ events: CartEvent[] }>('/cart/admin/events?limit=150')
+    goGet<{ events: CartEvent[] }>('/cart/admin/signals?limit=150')
       .then((data) => { setCartEvents(data.events || []); setServiceError(false) })
       .catch(() => setServiceError(true)),
   [])

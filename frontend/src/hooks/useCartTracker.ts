@@ -5,7 +5,7 @@ import { goTrack, liveSessionId } from '../lib/goApi'
 type CartAction = 'add' | 'remove' | 'update' | 'clear'
 
 interface CartEventPayload {
-  action: CartAction
+  event: CartAction
   product_id?: number
   product_name?: string
   quantity?: number
@@ -17,7 +17,7 @@ interface CartEventPayload {
 
 export function useCartTracker() {
   const track = useCallback((payload: CartEventPayload) => {
-    goTrack('/cart/events', { session_id: liveSessionId(), ...payload })
+    goTrack('/cart/signals', { session_id: liveSessionId(), ...payload })
   }, [])
 
   return { track }

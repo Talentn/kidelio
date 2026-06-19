@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { apiV1, peekCacheV1 } from "../lib/api";
 import { broadcast, onBroadcast } from "../lib/broadcast";
-import { goTrack, liveSessionId } from "../lib/goApi";
 import { useCartToast } from "./CartToastContext";
 import { useAuth } from "./AuthContext";
 
@@ -154,21 +153,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [refresh]);
 
-  // ── Go cart event tracker (HTTP — reliable in dev & prod) ───────────────
-  const trackCart = useCallback((action: string, item?: CartItem | null, qty?: number) => {
-    goTrack("/cart/events", {
-      session_id: liveSessionId(),
-      action,
-      product_id: item?.productId,
-      product_name: item?.name,
-      quantity: qty ?? item?.quantity ?? 1,
-      price: item?.price,
-      color_id: item?.colorId,
-      color_label: item?.colorLabel,
-      size_label: item?.sizeLabel,
-    });
-  }, []);
-
   const addItem = async (productId: number, qty = 1, variant?: CartVariant) => {
     const data = await apiV1<CartResponse>("/cart/items", {
       method: "POST",
@@ -178,19 +162,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(newItems)
     broadcast({ type: "cart", action: "changed" });
     const added = matchCartItem(newItems, productId, variant)
-    trackCart("add", added, qty)
     if (added) showToast(added.name, added.imageUrl)
   };
 
   const removeItem = async (productId: number, variant?: CartVariant) => {
-    const removed = matchCartItem(items, productId, variant)
     const data = await apiV1<CartResponse>(`/cart/items/${productId}`, {
       method: "DELETE",
       body: JSON.stringify(variantPayload(variant)),
     });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
-    trackCart("remove", removed)
   };
 
   const updateQty = async (productId: number, quantity: number, variant?: CartVariant) => {
@@ -200,15 +181,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
-    const updated = matchCartItem(items, productId, variant)
-    trackCart("update", updated, quantity)
   };
 
   const clear = async () => {
     const data = await apiV1<CartResponse>("/cart", { method: "DELETE" });
     setItems(mapItems(data.items));
     broadcast({ type: "cart", action: "changed" });
-    trackCart("clear")
   };
 
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);

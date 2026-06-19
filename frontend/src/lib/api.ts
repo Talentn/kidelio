@@ -92,6 +92,8 @@ export function invalidateCache(prefix?: string) {
   }
 }
 
+import { liveSessionId } from "./goApi";
+
 /* ── Core fetch ─────────────────────────────────────────────────────── */
 async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
   const isForm = options.body instanceof FormData;
@@ -100,6 +102,7 @@ async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
     credentials: "include",
     headers: {
       Accept: "application/json",
+      "X-Session-Id": liveSessionId(),
       ...(options.body && !isForm ? { "Content-Type": "application/json" } : {}),
       ...(options.headers as Record<string, string>),
     },
