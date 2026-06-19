@@ -7,6 +7,10 @@ import { AdminPage } from '../../components/admin/ui'
 import { apiAdmin } from '../../lib/api'
 import { goWsUrl, goGet, goWsEnabled } from '../../lib/goApi'
 import { formatDurationMs } from '../../lib/userTracking'
+import { useLivePoll } from '../../hooks/useLivePoll'
+
+const LIVE_POLL_MS = import.meta.env.PROD ? 15_000 : 5_000
+const LIVE_EVENT_LIMIT = 75
 
 type CartEvent = {
   id: string
@@ -118,19 +122,19 @@ export function AdminLiveCart() {
   const [favWsLive, setFavWsLive] = useState(false)
 
   const refreshCart = useCallback(() =>
-    apiAdmin<{ events: CartEvent[] }>('/cart-live-events?limit=150')
+    apiAdmin<{ events: CartEvent[] }>(`/cart-live-events?limit=${LIVE_EVENT_LIMIT}`)
       .then((data) => { setCartEvents(data.events || []); setCartError(false) })
       .catch(() => setCartError(true)),
   [])
 
   const refreshFavorites = useCallback(() =>
-    goGet<{ events: FavoriteEvent[] }>('/favorites/admin/events?limit=150')
+    goGet<{ events: FavoriteEvent[] }>(`/favorites/admin/events?limit=${LIVE_EVENT_LIMIT}`)
       .then((data) => { setFavEvents(data.events || []); setGoServiceError(false) })
       .catch(() => setGoServiceError(true)),
   [])
 
   const refreshUserEvents = useCallback(() =>
-    goGet<{ events: UserEvent[] }>('/tracking/admin/events?limit=150')
+    goGet<{ events: UserEvent[] }>(`/tracking/admin/events?limit=${LIVE_EVENT_LIMIT}`)
       .then((data) => { setUserEvents(data.events || []); setGoServiceError(false) })
       .catch(() => setGoServiceError(true)),
   [])
@@ -139,13 +143,18 @@ export function AdminLiveCart() {
     await Promise.all([refreshCart(), refreshFavorites(), refreshUserEvents()])
   }, [refreshCart, refreshFavorites, refreshUserEvents])
 
-  // Poll all feeds (always — WebSocket is a bonus, not a requirement)
-  useEffect(() => {
-    refreshAll()
-    const ms = import.meta.env.PROD ? 5000 : 3000
-    const id = setInterval(refreshAll, ms)
-    return () => clearInterval(id)
-  }, [refreshAll])
+  // Initial load + manual refresh only for "all" tab polling below
+  useEffect(() => { refreshAll() }, [refreshAll])
+
+  useLivePoll(refreshCart, [refreshCart], { interval: LIVE_POLL_MS })
+  useLivePoll(refreshFavorites, [refreshFavorites], {
+    interval: LIVE_POLL_MS,
+    enabled: tab === 'all' || tab === 'favorites',
+  })
+  useLivePoll(refreshUserEvents, [refreshUserEvents], {
+    interval: LIVE_POLL_MS,
+    enabled: tab === 'all' || tab === 'navigation',
+  })
 
   // Optional live WebSocket for favorites
   useEffect(() => {

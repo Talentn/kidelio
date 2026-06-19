@@ -20,7 +20,7 @@ function useAdminStats() {
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
-  useLivePoll(refresh, [refresh], { interval: 5_000 })
+  useLivePoll(refresh, [refresh], { interval: import.meta.env.PROD ? 15_000 : 5_000 })
 
   return stats
 }
