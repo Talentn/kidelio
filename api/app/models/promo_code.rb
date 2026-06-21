@@ -14,8 +14,8 @@ class PromoCode < ApplicationRecord
 
   scope :active, -> { where(active: true).where("expires_at IS NULL OR expires_at > ?", Time.current) }
 
-  def apply_to(subtotal, for_user: nil)
-    return 0.to_d unless usable?(for_user: for_user)
+  def apply_to(subtotal, for_user: nil, customer: {})
+    return 0.to_d unless usable?(for_user: for_user, customer: customer)
 
     amount = if percentage?
       subtotal * (discount_value / 100)
@@ -26,10 +26,25 @@ class PromoCode < ApplicationRecord
     [amount, subtotal].min
   end
 
-  def usable?(for_user: nil)
-    active? && (expires_at.nil? || expires_at > Time.current) &&
-      (usage_limit.nil? || used_count < usage_limit) &&
-      (user_id.nil? || (for_user.present? && user_id == for_user.id))
+  def usable?(for_user: nil, customer: {})
+    return false unless active? && (expires_at.nil? || expires_at > Time.current)
+    return false if usage_limit.present? && used_count >= usage_limit
+    return false if user_id.present? && (for_user.blank? || user_id != for_user.id)
+    return false if once_per_customer? && customer_already_used?(for_user: for_user, customer: customer)
+
+    true
+  end
+
+  def customer_already_used?(for_user: nil, customer: {})
+    ctx = customer.to_h.symbolize_keys
+    PromoCodeCustomerUsage.already_used?(
+      promo_code: code,
+      user: for_user,
+      **ctx.slice(
+        :guest_name, :guest_phone,
+        :shipping_governorate, :shipping_delegation, :shipping_address
+      )
+    )
   end
 
   def audit_label

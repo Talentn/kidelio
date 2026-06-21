@@ -44,13 +44,28 @@ class OrderCreator
 
     discount = 0.to_d
     promo_code_str = nil
+    customer = {
+      guest_name: @params[:guest_name],
+      guest_phone: @params[:guest_phone],
+      shipping_governorate: @params[:shipping_governorate],
+      shipping_delegation: @params[:shipping_delegation],
+      shipping_address: @params[:shipping_address]
+    }
+
     if @params[:promo_code].present?
       promo = PromoCode.active.find_by("LOWER(code) = ?", @params[:promo_code].downcase)
-      raise Error, "Code promo invalide" unless promo&.usable?(for_user: @user)
+      raise Error, "Code promo invalide" unless promo
+
+      if promo.once_per_customer? && promo.customer_already_used?(for_user: @user, customer: customer)
+        raise Error, "Ce code promo a déjà été utilisé pour ce client"
+      end
+      unless promo.usable?(for_user: @user, customer: customer)
+        raise Error, "Code promo invalide"
+      end
       if promo.min_order_amount.present? && subtotal < promo.min_order_amount
         raise Error, "Montant minimum non atteint"
       end
-      discount = promo.apply_to(subtotal, for_user: @user)
+      discount = promo.apply_to(subtotal, for_user: @user, customer: customer)
       promo_code_str = promo.code
     end
 

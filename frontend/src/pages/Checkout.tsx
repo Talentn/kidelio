@@ -135,9 +135,17 @@ export function Checkout() {
     if (!promo.trim()) return
     setPromoError('')
     try {
-      const d = await api<{ valid: boolean; discount: number }>('/promo-codes/validate', {
+      const d = await api<{ valid: boolean; discount: number; error?: string }>('/promo-codes/validate', {
         method: 'POST',
-        body: JSON.stringify({ code: promo, subtotal: total }),
+        body: JSON.stringify({
+          code: promo,
+          subtotal: total,
+          guest_name: name,
+          guest_phone: phone,
+          shipping_governorate: governorate,
+          shipping_delegation: delegation,
+          shipping_address: streetAddress,
+        }),
       })
       if (d.valid) {
         const discountAmount = Number(d.discount)

@@ -16,6 +16,7 @@ type PromoCode = {
   used_count: number;
   expires_at?: string | null;
   active: boolean;
+  once_per_customer: boolean;
   usable: boolean;
   status_label: string;
   created_at: string;
@@ -30,6 +31,7 @@ type FormState = {
   usage_limit: string;
   expires_at: string;
   active: boolean;
+  once_per_customer: boolean;
 };
 
 const emptyForm = (): FormState => ({
@@ -41,6 +43,7 @@ const emptyForm = (): FormState => ({
   usage_limit: "",
   expires_at: "",
   active: true,
+  once_per_customer: false,
 });
 
 function toDatetimeLocal(iso?: string | null) {
@@ -80,6 +83,7 @@ function PromoCodeForm({
         usage_limit: promo.usage_limit != null ? String(promo.usage_limit) : "",
         expires_at: toDatetimeLocal(promo.expires_at),
         active: promo.active,
+        once_per_customer: promo.once_per_customer,
       });
     } else {
       setForm(emptyForm());
@@ -96,6 +100,7 @@ function PromoCodeForm({
       discount_type: form.discount_type,
       discount_value: Number(form.discount_value),
       active: form.active,
+      once_per_customer: form.once_per_customer,
     };
 
     if (form.min_order_amount.trim()) body.min_order_amount = Number(form.min_order_amount);
@@ -232,6 +237,19 @@ function PromoCodeForm({
             <p className="text-xs text-slate-400 mt-1">Laisser vide = pas d&apos;expiration</p>
           </div>
         </div>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.once_per_customer}
+            onChange={(e) => setForm((f) => ({ ...f, once_per_customer: e.target.checked }))}
+            className="w-4 h-4 rounded accent-brand-500"
+          />
+          <span className="text-sm font-semibold text-slate-700">Une fois par client</span>
+        </label>
+        <p className="text-xs text-slate-400 -mt-2">
+          Compte connecté, ou sinon téléphone / nom / adresse de livraison pour les invités.
+        </p>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
@@ -375,6 +393,11 @@ export function AdminPromoCodes() {
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-bold font-mono tracking-wider text-slate-900">
                       {p.code}
+                      {p.once_per_customer && (
+                        <span className="block text-[10px] font-semibold text-violet-600 tracking-normal mt-0.5">
+                          1× par client
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-slate-800">{p.discount_label}</p>
