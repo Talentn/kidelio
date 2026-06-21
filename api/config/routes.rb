@@ -61,6 +61,7 @@ Rails.application.routes.draw do
       end
       resources :addresses, only: %i[index create update destroy]
       post "promo-codes/validate", to: "promo_codes#validate_code"
+      get "promo-codes/store-offer", to: "promo_codes#store_offer"
       get "rewards", to: "rewards#show"
       post "rewards/claim", to: "rewards#claim"
       resources :contact_messages, only: [:create], path: "contact"

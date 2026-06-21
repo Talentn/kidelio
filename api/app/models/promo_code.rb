@@ -11,8 +11,10 @@ class PromoCode < ApplicationRecord
   validates :discount_value, numericality: { greater_than: 0 }
 
   before_validation :normalize_code
+  before_save :clear_other_product_promos, if: :show_on_products?
 
   scope :active, -> { where(active: true).where("expires_at IS NULL OR expires_at > ?", Time.current) }
+  scope :for_product_display, -> { active.where(show_on_products: true).order(created_at: :desc) }
 
   def apply_to(subtotal, for_user: nil, customer: {})
     return 0.to_d unless usable?(for_user: for_user, customer: customer)
@@ -60,6 +62,10 @@ class PromoCode < ApplicationRecord
   end
 
   private
+
+  def clear_other_product_promos
+    PromoCode.where(show_on_products: true).where.not(id: id).update_all(show_on_products: false)
+  end
 
   def normalize_code
     self.code = code.to_s.strip.upcase if code.present?

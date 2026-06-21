@@ -14,6 +14,11 @@ import { trackProductView } from '../lib/userTracking'
 import { SEO } from '../components/SEO'
 import { ProductStarRating, type ProductRating } from '../components/ProductStarRating'
 import { useStore } from '../context/StoreContext'
+import { useStorePromoOffer } from '../hooks/useStorePromoOffer'
+import {
+  priceAfterPromo,
+  shouldShowProductPromoPrice,
+} from '../lib/storePromo'
 import { buildProductJsonLd, type ProductReviewPreview } from '../lib/productSchema'
 
 type ColorSize = { size: string; stock: number }
@@ -68,6 +73,15 @@ export function ProductDetail() {
   const { openCart } = useUI()
   const { isFavorite, toggle } = useFavorites()
   const { config: storeConfig } = useStore()
+  const { promo: storePromo, eligible: storePromoEligible, firstTimeUnknown } = useStorePromoOffer()
+
+  const showStorePromoPrice =
+    storePromo &&
+    shouldShowProductPromoPrice(storePromoEligible, firstTimeUnknown)
+
+  const priceWithStorePromo = showStorePromoPrice && storePromo
+    ? priceAfterPromo(Number(product?.effective_price ?? 0), storePromo)
+    : null
 
   const sortedColors = useMemo(
     () =>
@@ -373,10 +387,41 @@ export function ProductDetail() {
             </button>
           </div>
 
-          <p className="text-2xl xs:text-3xl md:text-4xl font-bold text-brand-600 mb-4 xs:mb-5">
-            {Number(product.effective_price).toFixed(3)}{' '}
-            <span className="text-base xs:text-lg font-bold text-brand-400">TND</span>
-          </p>
+          {showStorePromoPrice && storePromo && priceWithStorePromo != null ? (
+            <div className="mb-4 xs:mb-5">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <p className="text-2xl xs:text-3xl md:text-4xl font-bold text-violet-700">
+                  {priceWithStorePromo.toFixed(3)}{' '}
+                  <span className="text-base xs:text-lg font-bold text-violet-400">TND</span>
+                </p>
+                <span className="bg-violet-600 text-white text-sm font-bold font-mono tracking-widest px-3 py-1 rounded-full">
+                  {storePromo.code}
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-violet-600 mt-1">
+                Prix avec code promo {storePromo.code}
+                {storePromo.once_per_customer && ' — première commande'}
+              </p>
+              <p className="text-base text-gray-400 line-through mt-1">
+                {Number(product.effective_price).toFixed(3)} TND
+              </p>
+              {firstTimeUnknown && (
+                <p className="text-xs font-medium text-violet-500 mt-2">
+                  Code {storePromo.code} réservé aux nouveaux clients — appliqué automatiquement à la commande
+                </p>
+              )}
+              {storePromoEligible && !firstTimeUnknown && (
+                <p className="text-xs font-medium text-violet-500 mt-2">
+                  Code {storePromo.code} appliqué automatiquement à la commande
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-2xl xs:text-3xl md:text-4xl font-bold text-brand-600 mb-4 xs:mb-5">
+              {Number(product.effective_price).toFixed(3)}{' '}
+              <span className="text-base xs:text-lg font-bold text-brand-400">TND</span>
+            </p>
+          )}
 
           {slug && (
             <ProductStarRating

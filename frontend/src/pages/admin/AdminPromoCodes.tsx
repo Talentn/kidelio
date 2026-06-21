@@ -17,6 +17,7 @@ type PromoCode = {
   expires_at?: string | null;
   active: boolean;
   once_per_customer: boolean;
+  show_on_products: boolean;
   usable: boolean;
   status_label: string;
   created_at: string;
@@ -32,6 +33,7 @@ type FormState = {
   expires_at: string;
   active: boolean;
   once_per_customer: boolean;
+  show_on_products: boolean;
 };
 
 const emptyForm = (): FormState => ({
@@ -44,6 +46,7 @@ const emptyForm = (): FormState => ({
   expires_at: "",
   active: true,
   once_per_customer: false,
+  show_on_products: false,
 });
 
 function toDatetimeLocal(iso?: string | null) {
@@ -84,6 +87,7 @@ function PromoCodeForm({
         expires_at: toDatetimeLocal(promo.expires_at),
         active: promo.active,
         once_per_customer: promo.once_per_customer,
+        show_on_products: promo.show_on_products,
       });
     } else {
       setForm(emptyForm());
@@ -101,6 +105,7 @@ function PromoCodeForm({
       discount_value: Number(form.discount_value),
       active: form.active,
       once_per_customer: form.once_per_customer,
+      show_on_products: form.show_on_products,
     };
 
     if (form.min_order_amount.trim()) body.min_order_amount = Number(form.min_order_amount);
@@ -237,6 +242,19 @@ function PromoCodeForm({
             <p className="text-xs text-slate-400 mt-1">Laisser vide = pas d&apos;expiration</p>
           </div>
         </div>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.show_on_products}
+            onChange={(e) => setForm((f) => ({ ...f, show_on_products: e.target.checked }))}
+            className="w-4 h-4 rounded accent-brand-500"
+          />
+          <span className="text-sm font-semibold text-slate-700">Afficher sur les fiches produit</span>
+        </label>
+        <p className="text-xs text-slate-400 -mt-2">
+          Affiche le prix avec ce code et l&apos;applique automatiquement au checkout pour les clients éligibles.
+        </p>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
@@ -396,6 +414,11 @@ export function AdminPromoCodes() {
                       {p.once_per_customer && (
                         <span className="block text-[10px] font-semibold text-violet-600 tracking-normal mt-0.5">
                           1× par client
+                        </span>
+                      )}
+                      {p.show_on_products && (
+                        <span className="block text-[10px] font-semibold text-sky-600 tracking-normal mt-0.5">
+                          Fiche produit
                         </span>
                       )}
                     </td>

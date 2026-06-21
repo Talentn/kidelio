@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin, User, Phone, Mail, Tag, CheckCircle, Loader2, Truck, ShoppingCart, Banknote, Home } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
@@ -9,6 +9,7 @@ import { trackInitiateCheckout, trackPromoCodeApplied, trackPurchase } from '../
 import { trackCheckoutStart } from '../lib/userTracking'
 import { clearUtms, getStoredUtms } from '../lib/utm'
 import { SEO } from '../components/SEO'
+import { useStorePromoOffer } from '../hooks/useStorePromoOffer'
 
 const GOVERNORATES = [
   'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan',
@@ -50,6 +51,8 @@ export function Checkout() {
   const [promo, setPromo] = useState('')
   const [discount, setDiscount] = useState(0)
   const [promoApplied, setPromoApplied] = useState(false)
+  const [promoAutoApplied, setPromoAutoApplied] = useState(false)
+  const [promoManuallyEdited, setPromoManuallyEdited] = useState(false)
   const [error, setError] = useState('')
   const [promoError, setPromoError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -68,6 +71,23 @@ export function Checkout() {
   const [governorate, setGovernorate] = useState('')
   const [delegation, setDelegation] = useState('')
   const [streetAddress, setStreetAddress] = useState('')
+
+  const promoIdentity = useMemo(
+    () => ({
+      guest_name: name,
+      guest_phone: phone,
+      shipping_governorate: governorate,
+      shipping_delegation: delegation,
+      shipping_address: streetAddress,
+    }),
+    [name, phone, governorate, delegation, streetAddress],
+  )
+
+  const {
+    promo: storePromo,
+    eligible: storePromoEligible,
+    loading: storePromoLoading,
+  } = useStorePromoOffer(promoIdentity)
 
   const walletBalance = Number(user?.wallet_balance ?? 0)
 
@@ -131,14 +151,15 @@ export function Checkout() {
     applyAddress(addr)
   }
 
-  const validatePromo = async () => {
-    if (!promo.trim()) return
+  const validatePromoCode = useCallback(async (code: string, auto = false) => {
+    const trimmed = code.trim()
+    if (!trimmed) return false
     setPromoError('')
     try {
       const d = await api<{ valid: boolean; discount: number; error?: string }>('/promo-codes/validate', {
         method: 'POST',
         body: JSON.stringify({
-          code: promo,
+          code: trimmed,
           subtotal: total,
           guest_name: name,
           guest_phone: phone,
@@ -149,16 +170,57 @@ export function Checkout() {
       })
       if (d.valid) {
         const discountAmount = Number(d.discount)
+        setPromo(trimmed.toUpperCase())
         setDiscount(discountAmount)
         setPromoApplied(true)
-        trackPromoCodeApplied({ code: promo.trim(), discount: discountAmount, subtotal: total })
-      } else {
-        setPromoError('Code promo invalide')
+        setPromoAutoApplied(auto)
+        trackPromoCodeApplied({ code: trimmed, discount: discountAmount, subtotal: total })
+        return true
       }
+      setPromoError('Code promo invalide')
+      return false
     } catch (e: unknown) {
       setPromoError(e instanceof Error ? e.message : 'Code invalide')
+      return false
     }
-  }
+  }, [total, name, phone, governorate, delegation, streetAddress])
+
+  const validatePromo = () => validatePromoCode(promo, false)
+
+  useEffect(() => {
+    if (storePromoLoading || promoManuallyEdited || !storePromo || !storePromoEligible) return
+    if (promoApplied && promo === storePromo.code) return
+    if (storePromo.min_order_amount != null && total < Number(storePromo.min_order_amount)) return
+
+    validatePromoCode(storePromo.code, true)
+  }, [
+    storePromo,
+    storePromoEligible,
+    storePromoLoading,
+    promoManuallyEdited,
+    promoApplied,
+    promo,
+    total,
+    validatePromoCode,
+  ])
+
+  useEffect(() => {
+    if (
+      storePromoLoading ||
+      !promoApplied ||
+      !storePromo ||
+      promo !== storePromo.code ||
+      storePromoEligible
+    ) {
+      return
+    }
+
+    setPromoApplied(false)
+    setPromoAutoApplied(false)
+    setDiscount(0)
+    setPromo('')
+    setPromoError('Ce code promo a déjà été utilisé pour ce client')
+  }, [storePromo, storePromoEligible, storePromoLoading, promoApplied, promo])
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -438,13 +500,16 @@ export function Checkout() {
               {promoApplied ? (
                 <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 rounded-xl px-4 py-3 font-semibold text-sm">
                   <CheckCircle size={16} />
-                  Code «{promo}» appliqué — Réduction de {discount.toFixed(3)} TND
+                  Code «{promo}» appliqué{promoAutoApplied ? ' automatiquement' : ''} — Réduction de {discount.toFixed(3)} TND
                 </div>
               ) : (
                 <div className="flex gap-2">
                   <input
                     value={promo}
-                    onChange={(e) => setPromo(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setPromoManuallyEdited(true)
+                      setPromo(e.target.value.toUpperCase())
+                    }}
                     placeholder="CODE PROMO"
                     className="input flex-1 font-mono tracking-widest"
                   />

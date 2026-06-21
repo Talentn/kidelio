@@ -40,9 +40,9 @@ module Api
         cast_booleans(
           params.permit(
             :code, :discount_type, :discount_value, :min_order_amount,
-            :max_discount, :usage_limit, :expires_at, :active, :once_per_customer
+            :max_discount, :usage_limit, :expires_at, :active, :once_per_customer, :show_on_products
           ),
-          :active, :once_per_customer
+          :active, :once_per_customer, :show_on_products
         )
       end
 
@@ -61,6 +61,7 @@ module Api
           expires_at: promo.expires_at,
           active: promo.active,
           once_per_customer: promo.once_per_customer,
+          show_on_products: promo.show_on_products,
           usable: promo.usable?,
           status_label: promo.status_label,
           created_at: promo.created_at
