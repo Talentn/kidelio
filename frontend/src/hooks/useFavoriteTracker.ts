@@ -1,14 +1,9 @@
 import { useCallback } from 'react'
-import { goTrack, liveSessionId } from '../lib/goApi'
+import { trackFavorite } from '../lib/userTracking'
 
 export function useFavoriteTracker() {
   const track = useCallback((action: 'add' | 'remove', productId: number, productName: string) => {
-    goTrack('/favorites/events', {
-      session_id: liveSessionId(),
-      action,
-      product_id: productId,
-      product_name: productName,
-    })
+    trackFavorite(action, productId, productName)
   }, [])
 
   return { track }

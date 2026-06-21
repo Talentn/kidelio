@@ -34,6 +34,8 @@ Rails.application.routes.draw do
       post "auth/login", to: "auth#login"
       delete "auth/logout", to: "auth#logout"
 
+      post "activity/signals", to: "activity#create"
+
       get "consent", to: "consent#show"
       patch "consent", to: "consent#update"
 
@@ -67,6 +69,7 @@ Rails.application.routes.draw do
     namespace :admin do
       get "dashboard/stats", to: "dashboard#stats"
       get "statistics", to: "statistics#show"
+      get "client-analytics", to: "client_analytics#show"
       get "system-status", to: "system_status#show"
       get "queues-status", to: "queues_status#show"
       resources :products do

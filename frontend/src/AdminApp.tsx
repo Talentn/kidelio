@@ -19,7 +19,7 @@ const AdminAttributes = lazy(() => import("./pages/admin/AdminAttributes").then(
 const AdminPromos     = lazy(() => import("./pages/admin/AdminPromos").then((m) => ({ default: m.AdminPromos })));
 const AdminPromoCodes = lazy(() => import("./pages/admin/AdminPromoCodes").then((m) => ({ default: m.AdminPromoCodes })));
 const AdminUsers      = lazy(() => import("./pages/admin/AdminUsers").then((m) => ({ default: m.AdminUsers })));
-const AdminLiveCart   = lazy(() => import("./pages/admin/AdminLiveCart").then((m) => ({ default: m.AdminLiveCart })));
+const AdminClientAnalytics = lazy(() => import("./pages/admin/AdminClientAnalytics").then((m) => ({ default: m.AdminClientAnalytics })));
 const AdminChat         = lazy(() => import("./pages/admin/AdminChat").then((m) => ({ default: m.AdminChat })));
 const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").then((m) => ({ default: m.AdminChatArchives })));
 const SystemStatus      = lazy(() => import("./pages/admin/SystemStatus").then((m) => ({ default: m.SystemStatus })));
@@ -56,7 +56,7 @@ export default function AdminApp() {
               <Route path="utilisateurs" element={<AdminUsers />} />
             </Route>
             <Route path="activite" element={<ActivityLogs />} />
-            <Route path="panier-live" element={<AdminLiveCart />} />
+            <Route path="panier-live" element={<AdminClientAnalytics />} />
             <Route path="chat" element={<AdminChat />} />
             <Route path="chat-archives" element={<AdminChatArchives />} />
             <Route element={<RequireSuperOps />}>

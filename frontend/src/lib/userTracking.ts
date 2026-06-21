@@ -1,4 +1,5 @@
-import { goTrack, goTrackBeacon, liveSessionId } from './goApi'
+import { apiV1 } from './api'
+import { liveSessionId } from './goApi'
 
 export type UserEventType =
   | 'page_view'
@@ -6,6 +7,8 @@ export type UserEventType =
   | 'product_view'
   | 'search'
   | 'checkout_start'
+  | 'favorite_add'
+  | 'favorite_remove'
 
 type TrackPayload = {
   event_type: UserEventType
@@ -23,15 +26,9 @@ function shouldTrack(key: string): boolean {
   const last = recent.get(key)
   if (last != null && now - last < DEDUP_MS) return false
   recent.set(key, now)
-  if (recent.size > 200) {
-    for (const [k, t] of recent) {
-      if (now - t > DEDUP_MS * 2) recent.delete(k)
-    }
-  }
   return true
 }
 
-/** Human-readable duration for admin display. */
 export function formatDurationMs(ms: number): string {
   const s = Math.max(1, Math.round(ms / 1000))
   if (s < 60) return `${s}s`
@@ -43,25 +40,35 @@ export function formatDurationMs(ms: number): string {
   return rm ? `${h}h ${rm} min` : `${h}h`
 }
 
-/** Fire-and-forget user activity event for admin live tracking. */
+function postActivity(body: Record<string, unknown>, beacon = false) {
+  const payload = JSON.stringify({ session_id: liveSessionId(), ...body })
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Session-Id': liveSessionId(),
+  }
+
+  if (beacon) {
+    if (typeof navigator.sendBeacon === 'function') {
+      const ok = navigator.sendBeacon('/api/v1/activity/signals', new Blob([payload], { type: 'application/json' }))
+      if (ok) return
+    }
+    fetch('/api/v1/activity/signals', {
+      method: 'POST',
+      headers,
+      body: payload,
+      credentials: 'include',
+      keepalive: true,
+    }).catch(() => {})
+    return
+  }
+
+  apiV1('/activity/signals', { method: 'POST', body: payload }).catch(() => {})
+}
+
 export function trackUserActivity(payload: TrackPayload, opts?: { beacon?: boolean }) {
-  const key = `${payload.event_type}:${payload.path ?? ''}:${payload.product_id ?? ''}:${JSON.stringify(payload.metadata ?? {})}`
+  const key = `${payload.event_type}:${payload.path ?? ''}:${payload.product_id ?? ''}`
   if (payload.event_type !== 'page_leave' && !shouldTrack(key)) return
-
-  const body = {
-    session_id: liveSessionId(),
-    event_type: payload.event_type,
-    path: payload.path,
-    product_id: payload.product_id,
-    product_name: payload.product_name,
-    metadata: payload.metadata,
-  }
-
-  if (opts?.beacon) {
-    goTrackBeacon('/tracking/events', body)
-  } else {
-    goTrack('/tracking/events', body)
-  }
+  postActivity(payload, opts?.beacon)
 }
 
 export function trackPageView(pathname: string) {
@@ -112,5 +119,13 @@ export function trackCheckoutStart(itemCount: number, total: number) {
     event_type: 'checkout_start',
     path: '/checkout',
     metadata: { item_count: itemCount, total },
+  })
+}
+
+export function trackFavorite(action: 'add' | 'remove', productId: number, productName: string) {
+  trackUserActivity({
+    event_type: action === 'add' ? 'favorite_add' : 'favorite_remove',
+    product_id: productId,
+    product_name: productName,
   })
 }

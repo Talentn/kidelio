@@ -63,7 +63,7 @@ export function AdminLayout() {
     { to: '/admin/activite',   label: 'Activité',         icon: Activity },
     { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle },
     { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive },
-    { to: '/admin/panier-live', label: 'Suivi clients', icon: Circle },
+    { to: '/admin/panier-live', label: 'Comportement clients', icon: Circle },
     ...(superOps ? [
       { to: '/admin/systeme', label: 'État services', icon: Server },
       { to: '/admin/files-attente', label: "Files d'attente", icon: ListTodo },

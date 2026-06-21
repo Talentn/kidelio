@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_19_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_19_210000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -103,6 +103,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_200000) do
     t.datetime "updated_at", null: false
     t.index ["parent_id"], name: "index_categories_on_parent_id"
     t.index ["slug"], name: "index_categories_on_slug", unique: true
+  end
+
+  create_table "client_activity_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "ip_address"
+    t.json "metadata", default: {}
+    t.string "path"
+    t.integer "product_id"
+    t.string "product_name"
+    t.string "session_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id"
+    t.index ["created_at"], name: "index_client_activity_events_on_created_at"
+    t.index ["event_type", "created_at"], name: "index_client_activity_events_on_event_type_and_created_at"
+    t.index ["product_id"], name: "index_client_activity_events_on_product_id"
+    t.index ["session_id"], name: "index_client_activity_events_on_session_id"
+    t.index ["user_id"], name: "index_client_activity_events_on_user_id"
   end
 
   create_table "contact_messages", force: :cascade do |t|
@@ -287,6 +306,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_200000) do
   add_foreign_key "cart_live_events", "products"
   add_foreign_key "cart_live_events", "users"
   add_foreign_key "categories", "categories", column: "parent_id"
+  add_foreign_key "client_activity_events", "products"
+  add_foreign_key "client_activity_events", "users"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"
   add_foreign_key "orders", "users"
