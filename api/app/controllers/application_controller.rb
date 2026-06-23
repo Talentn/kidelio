@@ -144,7 +144,9 @@ class ApplicationController < ActionController::Base
     large:  [ 900, 1200 ],
   }.freeze
 
-  def json_variant_url(attachment, size: :medium)
+  # format: :webp for the storefront (smaller); :jpg for consumers that don't
+  # accept WebP (e.g. the Meta/Facebook product catalog feed).
+  def json_variant_url(attachment, size: :medium, format: :webp)
     return nil if attachment.nil?
 
     if attachment.respond_to?(:attached?)
@@ -160,7 +162,7 @@ class ApplicationController < ActionController::Base
     dims = VARIANT_SIZES.fetch(size, VARIANT_SIZES[:medium])
     variant = attachment.variant(
       resize_to_limit: dims,
-      format: :webp,
+      format: format,
       saver: { quality: 82 }
     )
     rails_representation_url(variant, **blob_url_options)

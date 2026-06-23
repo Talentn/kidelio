@@ -168,7 +168,8 @@ class FacebookCatFeedController < ApplicationController
 
   def variant_image_url(product, color)
     if color.images.attached?
-      json_variant_url(color.images.first, size: :large)
+      # Meta only accepts JPEG/PNG (not WebP), so force JPEG for the feed.
+      json_variant_url(color.images.first, size: :large, format: :jpg)
     else
       primary_image_url(product)
     end
@@ -184,7 +185,7 @@ class FacebookCatFeedController < ApplicationController
     attachments = product.listing_image_attachments
     return nil if attachments.empty?
 
-    json_variant_url(attachments.first, size: :large)
+    json_variant_url(attachments.first, size: :large, format: :jpg)
   rescue StandardError
     nil
   end
@@ -194,7 +195,7 @@ class FacebookCatFeedController < ApplicationController
     return [] if attachments.nil? || attachments.empty?
 
     attachments.filter_map do |att|
-      json_variant_url(att, size: :large)
+      json_variant_url(att, size: :large, format: :jpg)
     rescue StandardError
       nil
     end
@@ -204,7 +205,7 @@ class FacebookCatFeedController < ApplicationController
     return [] unless color.images.attached?
 
     color.images.to_a[1..].filter_map do |att|
-      json_variant_url(att, size: :large)
+      json_variant_url(att, size: :large, format: :jpg)
     rescue StandardError
       nil
     end
@@ -227,6 +228,7 @@ class FacebookCatFeedController < ApplicationController
     return "newborn" if age.match?(/nouveau|newborn|0.?6|naissance/)
     return "infant" if age.match?(/bébé|bebe|nourrisson|infant/)
     return "toddler" if age.match?(/toddler|1.?3|2.?4/)
+    return "adult" if age.match?(/adulte|adult|femme|homme|women|men/)
     return "kids" if age.match?(/enfant|fille|garçon|kid|3.?12|4.?12|6.?12/)
 
     "kids"
