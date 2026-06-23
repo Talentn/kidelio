@@ -29,12 +29,12 @@ func RecentUserEvents(limit int, eventType string) ([]UserEvent, error) {
 	var rows *sql.Rows
 	var err error
 	if eventType != "" {
-		rows, err = DB.Query(
+		rows, err = ReadDB.Query(
 			`SELECT id, user_id, session_id, event_type, path, product_id, product_name, metadata, created_at FROM user_events WHERE event_type = ? ORDER BY created_at DESC LIMIT ?`,
 			eventType, limit,
 		)
 	} else {
-		rows, err = DB.Query(
+		rows, err = ReadDB.Query(
 			`SELECT id, user_id, session_id, event_type, path, product_id, product_name, metadata, created_at FROM user_events ORDER BY created_at DESC LIMIT ?`,
 			limit,
 		)

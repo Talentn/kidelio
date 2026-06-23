@@ -21,7 +21,7 @@ func SaveFavoriteEvent(e *FavoriteEvent) error {
 }
 
 func RecentFavoriteEvents(limit int) ([]FavoriteEvent, error) {
-	rows, err := DB.Query(
+	rows, err := ReadDB.Query(
 		`SELECT id, user_id, session_id, action, product_id, product_name, created_at FROM favorite_events ORDER BY created_at DESC LIMIT ?`,
 		limit,
 	)

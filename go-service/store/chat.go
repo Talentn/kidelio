@@ -51,7 +51,7 @@ func CreateRoom(r *Room) error {
 }
 
 func GetRoom(id string) (*Room, error) {
-	row := DB.QueryRow(
+	row := ReadDB.QueryRow(
 		`SELECT id, user_id, user_name, user_email, status, agent_id, agent_name, created_at, updated_at FROM chat_rooms WHERE id = ?`,
 		id,
 	)
@@ -59,7 +59,7 @@ func GetRoom(id string) (*Room, error) {
 }
 
 func ListQueued() ([]Room, error) {
-	rows, err := DB.Query(
+	rows, err := ReadDB.Query(
 		`SELECT id, user_id, user_name, user_email, status, agent_id, agent_name, created_at, updated_at FROM chat_rooms WHERE status = 'queued' ORDER BY created_at`,
 	)
 	if err != nil {
@@ -78,7 +78,7 @@ func ListQueued() ([]Room, error) {
 }
 
 func ListActiveForAgent(agentID int64) ([]Room, error) {
-	rows, err := DB.Query(
+	rows, err := ReadDB.Query(
 		`SELECT id, user_id, user_name, user_email, status, agent_id, agent_name, created_at, updated_at FROM chat_rooms WHERE status = 'active' AND agent_id = ? ORDER BY updated_at DESC`,
 		agentID,
 	)
@@ -146,7 +146,7 @@ func ListClosedRooms(limit, offset int, query string) ([]ArchivedRoom, error) {
 	sqlText += ` ORDER BY r.updated_at DESC LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 
-	rows, err := DB.Query(sqlText, args...)
+	rows, err := ReadDB.Query(sqlText, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func CountClosedRooms(query string) (int, error) {
 		args = append(args, pattern, pattern, pattern)
 	}
 	var count int
-	err := DB.QueryRow(sqlText, args...).Scan(&count)
+	err := ReadDB.QueryRow(sqlText, args...).Scan(&count)
 	return count, err
 }
 
@@ -193,7 +193,7 @@ func SaveMessage(m *Message) error {
 }
 
 func GetMessages(roomID string) ([]Message, error) {
-	rows, err := DB.Query(
+	rows, err := ReadDB.Query(
 		`SELECT id, room_id, sender_type, sender_name, content, created_at FROM chat_messages WHERE room_id = ? ORDER BY created_at`,
 		roomID,
 	)

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, Eye, RefreshCw, Search } from "lucide-react";
+import {
+  Activity, RefreshCw, Search, ChevronRight,
+  Plus, Pencil, Trash2, ArrowLeftRight, LogIn, LogOut,
+} from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { useLivePoll } from "../../hooks/useLivePoll";
 import {
+  ACTIVITY_ACTION_LABELS,
   activityActionLabel,
   activityEntityLabel,
   userRoleLabel,
@@ -13,7 +17,39 @@ import {
   activityEntityFilterLabel,
   activityLogSummary,
 } from "../../lib/activitySummary";
+import { formatAdminRelative } from "../../lib/adminDatetime";
 import { AdminPage, Card, Modal } from "../../components/admin/ui";
+
+const ACTION_ICONS: Record<string, typeof Plus> = {
+  CREATE: Plus,
+  UPDATE: Pencil,
+  DELETE: Trash2,
+  STATUS_CHANGE: ArrowLeftRight,
+  LOGIN: LogIn,
+  LOGOUT: LogOut,
+};
+
+const ACTION_ICON_STYLES: Record<string, string> = {
+  CREATE: "bg-emerald-100 text-emerald-600",
+  UPDATE: "bg-blue-100 text-blue-600",
+  DELETE: "bg-red-100 text-red-600",
+  STATUS_CHANGE: "bg-purple-100 text-purple-600",
+  LOGIN: "bg-slate-100 text-slate-500",
+  LOGOUT: "bg-slate-100 text-slate-500",
+};
+
+/** Human day bucket label: "Aujourd'hui", "Hier" or a full date. */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(d, today)) return "Aujourd'hui";
+  if (sameDay(d, yesterday)) return "Hier";
+  return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+}
 
 type LogUser = {
   id: number;
@@ -267,10 +303,24 @@ export function ActivityLogs() {
     });
   }, [logs, search, roleFilter]);
 
-  const actionOptions = useMemo(
-    () => [...new Set(logs.map((l) => l.action))].sort(),
-    [logs],
-  );
+  // Static list so picking an action (which filters server-side) never makes the
+  // other options disappear from the dropdown.
+  const actionOptions = useMemo(() => Object.keys(ACTIVITY_ACTION_LABELS), []);
+
+  // Group the filtered logs into day buckets for a scannable timeline.
+  const grouped = useMemo(() => {
+    const buckets: { label: string; logs: Log[] }[] = [];
+    let current: { label: string; logs: Log[] } | null = null;
+    for (const log of filtered) {
+      const label = dayLabel(log.created_at);
+      if (!current || current.label !== label) {
+        current = { label, logs: [] };
+        buckets.push(current);
+      }
+      current.logs.push(log);
+    }
+    return buckets;
+  }, [filtered]);
 
   return (
     <AdminPage
@@ -342,94 +392,81 @@ export function ActivityLogs() {
         </p>
       )}
 
-      <Card className="overflow-hidden">
-        {loading ? (
-          <div className="p-5 space-y-3">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="skeleton h-10 rounded-lg" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <Activity size={40} className="text-slate-200 mx-auto mb-3" />
-            <p className="font-semibold text-slate-500">
-              {logs.length === 0
-                ? "Aucune activité enregistrée. Effectuez une action admin puis actualisez."
-                : "Aucun résultat pour ces filtres."}
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                  <th className="text-left font-bold px-4 py-3">Date</th>
-                  <th className="text-left font-bold px-4 py-3">Utilisateur</th>
-                  <th className="text-left font-bold px-4 py-3">Action</th>
-                  <th className="text-left font-bold px-4 py-3">Entité</th>
-                  <th className="text-left font-bold px-4 py-3 min-w-[200px]">Détails</th>
-                  <th className="text-right font-bold px-4 py-3 w-16" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
-                    onClick={() => setSelected(log)}
-                  >
-                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                      {new Date(log.created_at).toLocaleString("fr-FR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-slate-800">{log.user?.name ?? "—"}</p>
+      {loading ? (
+        <Card className="p-4 space-y-3">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="skeleton h-14 rounded-xl" />
+          ))}
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="text-center py-16">
+          <Activity size={40} className="text-slate-200 mx-auto mb-3" />
+          <p className="font-semibold text-slate-500">
+            {logs.length === 0
+              ? "Aucune activité enregistrée. Effectuez une action admin puis actualisez."
+              : "Aucun résultat pour ces filtres."}
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {grouped.map((group) => (
+            <div key={group.label}>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                {group.label}
+                <span className="ml-2 font-medium normal-case tracking-normal text-slate-300">
+                  {group.logs.length}
+                </span>
+              </h2>
+              <Card className="divide-y divide-slate-100 overflow-hidden">
+                {group.logs.map((log) => {
+                  const Icon = ACTION_ICONS[log.action] ?? Activity;
+                  return (
+                    <button
+                      key={log.id}
+                      type="button"
+                      onClick={() => setSelected(log)}
+                      className="w-full flex items-center gap-3 px-3 sm:px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                    >
                       <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userRoleStyle(log.user?.role)}`}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${ACTION_ICON_STYLES[log.action] ?? "bg-slate-100 text-slate-500"}`}
                       >
-                        {userRoleLabel(log.user?.role)}
+                        <Icon size={16} />
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${ACTION_STYLES[log.action] ?? "bg-slate-100 text-slate-600"}`}
-                      >
-                        {activityActionLabel(log.action)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      <span className="font-semibold text-slate-800">
-                        {activityEntityLabel(log.entity_type)}
-                      </span>
-                      {log.entity_name ? (
-                        <p className="text-xs text-slate-500 truncate max-w-[180px]">{log.entity_name}</p>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 text-xs leading-relaxed">
-                      {activityLogSummary(log)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelected(log);
-                        }}
-                        className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        title="Voir le détail"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-slate-800 text-sm truncate">
+                            {log.user?.name ?? "Utilisateur inconnu"}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${userRoleStyle(log.user?.role)}`}
+                          >
+                            {userRoleLabel(log.user?.role)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          <span className="font-medium text-slate-600">
+                            {activityActionLabel(log.action)} · {activityEntityLabel(log.entity_type)}
+                          </span>
+                          {log.entity_name ? <span className="text-slate-400"> — {log.entity_name}</span> : null}
+                        </p>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{activityLogSummary(log)}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <time className="text-xs text-slate-400 whitespace-nowrap hidden sm:block">
+                          {formatAdminRelative(log.created_at)}
+                        </time>
+                        <ChevronRight size={16} className="text-slate-300" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </Card>
+            </div>
+          ))}
+        </div>
+      )}
 
       {selected && <LogDetailModal log={selected} onClose={() => setSelected(null)} />}
     </AdminPage>

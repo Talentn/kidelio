@@ -6,12 +6,13 @@ class GoServiceClient
     ENV.fetch("GO_SERVICE_URL", "http://127.0.0.1:3010")
   end
 
-  def self.forward(method:, path:, body: nil, rack_request:, staff: nil, customer: nil)
+  def self.forward(method:, path:, body: nil, rack_request:, staff: nil, customer: nil,
+                   open_timeout: 3, read_timeout: 15)
     uri = URI("#{base_uri}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = uri.scheme == "https"
-    http.open_timeout = 3
-    http.read_timeout = 15
+    http.open_timeout = open_timeout
+    http.read_timeout = read_timeout
 
     req = request_class(method).new(uri)
     req["Content-Type"] = rack_request.content_type if rack_request.content_type.present?

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ShoppingCart, Eye, Users, Search, Heart, CreditCard, Clock,
-  TrendingUp, TrendingDown, RefreshCw, BarChart3,
+  TrendingUp, TrendingDown, RefreshCw,
 } from 'lucide-react'
 import { apiAdmin } from '../../lib/api'
 import { AdminPage, Card } from '../../components/admin/ui'
@@ -112,6 +112,25 @@ function KpiCard({
   )
 }
 
+function MiniStat({
+  icon: Icon, label, value, tint,
+}: {
+  icon: typeof ShoppingCart
+  label: string
+  value: string | number
+  tint: string
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Icon size={18} className={`${tint} flex-shrink-0`} />
+      <div className="min-w-0">
+        <p className="text-lg font-bold text-slate-900 leading-tight">{value}</p>
+        <p className="text-[11px] text-slate-500 truncate">{label}</p>
+      </div>
+    </div>
+  )
+}
+
 function activityDetail(ev: Analytics['recent_activity'][0]) {
   const m = ev.metadata ?? {}
   if (ev.event_type === 'page_leave' && m.duration_ms != null) {
@@ -195,17 +214,21 @@ export function AdminClientAnalytics() {
 
       {k && (
         <>
-          {/* KPI grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Primary KPIs — the 4 numbers that matter most */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <KpiCard icon={Users} label="Sessions uniques" value={k.sessions} change={prev?.change_sessions_pct} accent="bg-blue-50 text-blue-600" />
             <KpiCard icon={Eye} label="Vues produit" value={k.product_views} change={prev?.change_product_views_pct} accent="bg-indigo-50 text-indigo-600" />
             <KpiCard icon={ShoppingCart} label="Ajouts panier" value={k.cart_adds} change={prev?.change_cart_adds_pct} accent="bg-emerald-50 text-emerald-600" sub={`${k.cart_removals} retrait(s)`} />
-            <KpiCard icon={CreditCard} label="Checkouts" value={k.checkouts} accent="bg-orange-50 text-orange-600" sub={`Conv. ${k.conversion_cart_to_checkout_pct}%`} />
-            <KpiCard icon={Clock} label="Temps moyen / page" value={`${k.avg_dwell_seconds}s`} accent="bg-teal-50 text-teal-600" />
-            <KpiCard icon={Search} label="Recherches" value={k.searches} accent="bg-violet-50 text-violet-600" />
-            <KpiCard icon={Heart} label="Favoris ajoutés" value={k.favorites} accent="bg-pink-50 text-pink-600" />
-            <KpiCard icon={BarChart3} label="Période précédente" value={prev?.cart_adds ?? 0} accent="bg-slate-50 text-slate-600" sub="ajouts panier" />
+            <KpiCard icon={CreditCard} label="Checkouts" value={k.checkouts} accent="bg-orange-50 text-orange-600" sub={`Conversion ${k.conversion_cart_to_checkout_pct}%`} />
           </div>
+
+          {/* Secondary metrics — compact strip, not a wall of cards */}
+          <Card className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100 mb-6">
+            <MiniStat icon={Clock} label="Temps moyen / page" value={`${k.avg_dwell_seconds}s`} tint="text-teal-600" />
+            <MiniStat icon={Search} label="Recherches" value={k.searches} tint="text-violet-600" />
+            <MiniStat icon={Heart} label="Favoris ajoutés" value={k.favorites} tint="text-pink-600" />
+            <MiniStat icon={CreditCard} label="Conversion panier" value={`${k.conversion_cart_to_checkout_pct}%`} tint="text-orange-600" />
+          </Card>
 
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
             {/* Activity by hour */}
@@ -262,8 +285,8 @@ export function AdminClientAnalytics() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {data.top_cart_products.map((p) => (
-                      <tr key={p.product_name}>
+                    {data.top_cart_products.map((p, i) => (
+                      <tr key={`${p.product_id ?? 'na'}-${i}`}>
                         <td className="py-2 pr-2 font-medium text-slate-800 truncate max-w-[120px]">{p.product_name}</td>
                         <td className="py-2 text-right font-bold">{p.adds}</td>
                         <td className="py-2 text-right text-slate-500">{p.revenue.toFixed(3)}</td>
@@ -281,8 +304,8 @@ export function AdminClientAnalytics() {
                 <p className="text-sm text-slate-400">Aucune vue.</p>
               ) : (
                 <ul className="space-y-2">
-                  {data.top_viewed_products.map((p) => (
-                    <li key={p.product_name} className="flex justify-between text-xs">
+                  {data.top_viewed_products.map((p, i) => (
+                    <li key={`${p.product_id ?? 'na'}-${i}`} className="flex justify-between text-xs">
                       <span className="font-medium text-slate-800 truncate pr-2">{p.product_name}</span>
                       <span className="font-bold text-indigo-600 flex-shrink-0">{p.count}</span>
                     </li>
@@ -298,8 +321,8 @@ export function AdminClientAnalytics() {
                 <p className="text-sm text-slate-400">Aucune recherche.</p>
               ) : (
                 <ul className="space-y-2">
-                  {data.top_searches.map((s) => (
-                    <li key={s.query} className="flex justify-between text-xs">
+                  {data.top_searches.map((s, i) => (
+                    <li key={`${s.query}-${i}`} className="flex justify-between text-xs">
                       <span className="text-slate-700 truncate pr-2">« {s.query} »</span>
                       <span className="font-bold text-violet-600">{s.count}</span>
                     </li>

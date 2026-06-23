@@ -51,11 +51,11 @@ module Api
       end
 
       def cart_events
-        relay("/cart/signals")
+        relay("/cart/signals", read_timeout: 4)
       end
 
       def favorites_events
-        relay("/favorites/events")
+        relay("/favorites/events", read_timeout: 4)
       end
 
       def cart_admin_events
@@ -67,7 +67,7 @@ module Api
       end
 
       def tracking_events
-        relay("/tracking/events")
+        relay("/tracking/events", read_timeout: 4)
       end
 
       def tracking_admin_events
@@ -76,7 +76,7 @@ module Api
 
       private
 
-      def relay(go_path)
+      def relay(go_path, read_timeout: 15)
         forwarded_path = request.query_string.present? ? "#{go_path}?#{request.query_string}" : go_path
         staff = ADMIN_ACTIONS.include?(action_name.to_sym) ? Current.user : nil
         customer = (action_name == "create_chat_room" ? Current.user : nil)
@@ -86,7 +86,8 @@ module Api
           body: request.raw_post.presence,
           rack_request: request,
           staff: staff,
-          customer: customer
+          customer: customer,
+          read_timeout: read_timeout
         )
         response.headers["Content-Type"] = res["Content-Type"] if res["Content-Type"]
         render plain: res.body, status: res.code.to_i

@@ -7,7 +7,6 @@ package hub
 import (
 	"encoding/json"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,14 +27,12 @@ func (c *Client) Write(msg any) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	// Non-blocking: never stall a broadcast (which holds the hub read lock) on a
+	// slow or dead consumer. A dropped live event is recovered by the client's
+	// history sync on (re)connect and the HTTP poll fallback.
 	select {
 	case c.Send <- b:
 	default:
-		// Block briefly rather than drop live chat events
-		select {
-		case c.Send <- b:
-		case <-time.After(2 * time.Second):
-		}
 	}
 }
 

@@ -3,19 +3,42 @@ package store
 import (
 	"database/sql"
 	"log"
+	"runtime"
 
 	_ "modernc.org/sqlite"
 )
 
-var DB *sql.DB
+// DB is the write pool: a single connection so writes serialize cleanly and
+// never trigger "database is locked" between competing writers.
+// ReadDB is a separate multi-connection pool so SELECTs run concurrently and
+// are never blocked behind an in-flight write (the main source of request hangs).
+var (
+	DB     *sql.DB
+	ReadDB *sql.DB
+)
 
 func Init(path string) {
+	// WAL lets readers proceed while a write is in progress; the long busy
+	// timeout makes contended writes wait instead of failing.
+	dsn := path + "?_journal_mode=WAL&_busy_timeout=10000&_synchronous=NORMAL"
+
 	var err error
-	DB, err = sql.Open("sqlite", path+"?_journal_mode=WAL&_busy_timeout=5000")
+	DB, err = sql.Open("sqlite", dsn)
 	if err != nil {
-		log.Fatalf("store: open db: %v", err)
+		log.Fatalf("store: open write db: %v", err)
 	}
 	DB.SetMaxOpenConns(1)
+
+	ReadDB, err = sql.Open("sqlite", dsn)
+	if err != nil {
+		log.Fatalf("store: open read db: %v", err)
+	}
+	readConns := runtime.NumCPU()
+	if readConns < 4 {
+		readConns = 4
+	}
+	ReadDB.SetMaxOpenConns(readConns)
+
 	migrate()
 }
 

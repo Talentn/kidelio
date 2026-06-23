@@ -26,7 +26,7 @@ func SaveCartEvent(e *CartEvent) error {
 }
 
 func RecentCartEvents(limit int) ([]CartEvent, error) {
-	rows, err := DB.Query(
+	rows, err := ReadDB.Query(
 		`SELECT id, user_id, session_id, action, product_id, product_name, quantity, price, color_id, color_label, size_label, created_at FROM cart_events ORDER BY created_at DESC LIMIT ?`,
 		limit,
 	)
