@@ -204,8 +204,13 @@ class FacebookCatFeedController < ApplicationController
 
   # Meta only accepts JPEG/PNG (not WebP) and fetches images directly, so we emit
   # *proxy* URLs (HTTP 200 with the actual JPEG bytes) rather than the default
-  # redirect URLs that bounce to a short-lived signed disk URL. Returns nil on
-  # failure so we never serve an invalid (e.g. WebP original) image to the feed.
+  # redirect URLs that bounce to a short-lived signed disk URL.
+  #
+  # We build the URL with an explicit, clean ASCII ".jpg" filename instead of the
+  # original blob filename. Original names often contain spaces, apostrophes and
+  # accents (e.g. "Capture d'écran.png") which Meta's crawler can choke on, and a
+  # ".png" path serving JPEG bytes is needlessly ambiguous. Returns nil on failure
+  # so we never serve an invalid (e.g. WebP original) image to the feed.
   def feed_image_url(attachment)
     return nil if attachment.nil?
     return nil if attachment.respond_to?(:attached?) && !attachment.attached?
@@ -215,9 +220,22 @@ class FacebookCatFeedController < ApplicationController
 
     dims = VARIANT_SIZES.fetch(:large)
     variant = attachment.variant(resize_to_limit: dims, format: :jpg, saver: { quality: 85 })
-    rails_storage_proxy_url(variant, **blob_url_options)
+
+    rails_blob_representation_proxy_url(
+      variant.blob.signed_id,
+      variant.variation.key,
+      "kidelio-#{variant.blob.id}.jpg",
+      **blob_url_options
+    )
   rescue StandardError
-    nil
+    # Fallback: still a direct 200 JPEG proxy URL, just with the original filename.
+    begin
+      dims = VARIANT_SIZES.fetch(:large)
+      variant = attachment.variant(resize_to_limit: dims, format: :jpg, saver: { quality: 85 })
+      rails_storage_proxy_url(variant, **blob_url_options)
+    rescue StandardError
+      nil
+    end
   end
 
   def google_category(product)
