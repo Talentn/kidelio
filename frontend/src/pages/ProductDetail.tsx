@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { scrollWindowToTop } from '../lib/scrollToTop'
 import { Link, useParams } from 'react-router-dom'
 import {
-  ShoppingCart, ChevronLeft, Minus, Plus, Check, Heart,
-  Shirt, Truck, Banknote, ShieldCheck, PackageCheck, Frown,
+  ShoppingCart, ChevronLeft, ChevronRight, Minus, Plus, Check, Heart,
+  Shirt, Truck, Banknote, ShieldCheck, PackageCheck, Frown, X, ZoomIn,
 } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
 import { useCart } from '../context/CartContext'
@@ -67,6 +67,7 @@ export function ProductDetail() {
   const [colorId, setColorId] = useState<number | null>(null)
   const [size, setSize] = useState<string | null>(null)
   const [activeImage, setActiveImage] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [rating, setRating] = useState<ProductRating>({ average: 0, count: 0 })
 
   const { addItem } = useCart()
@@ -181,6 +182,29 @@ export function ProductDetail() {
     if (selectedColor && selectedColor.image_urls.length > 0) return selectedColor.image_urls
     return product?.image_urls ?? []
   }, [selectedColor, product])
+
+  const showImageAt = (index: number) => {
+    if (gallery.length === 0) return
+    const next = (index + gallery.length) % gallery.length
+    setActiveImage(next)
+  }
+
+  // Lightbox: lock page scroll and support Escape / arrow-key navigation.
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxOpen(false)
+      else if (e.key === 'ArrowRight') showImageAt(activeImage + 1)
+      else if (e.key === 'ArrowLeft') showImageAt(activeImage - 1)
+    }
+    document.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [lightboxOpen, activeImage, gallery.length])
 
   // Effective stock for the current selection.
   const effectiveStock = useMemo(() => {
@@ -297,9 +321,19 @@ export function ProductDetail() {
         <div className="space-y-3">
           <div className="flex gap-3">
             <div className="flex-1 min-w-0">
-              <div className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-gray-50 to-brand-50 relative">
+              <div className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-gray-50 to-brand-50 relative group">
                 {mainImage ? (
-                  <img src={mainImage} alt={product.name} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    className="w-full h-full block cursor-zoom-in"
+                    aria-label="Agrandir la photo"
+                  >
+                    <img src={mainImage} alt={product.name} className="w-full h-full object-cover" />
+                    <span className="absolute bottom-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-black/45 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ZoomIn size={18} />
+                    </span>
+                  </button>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-brand-200">
                     <Shirt size={120} strokeWidth={1.2} />
@@ -626,6 +660,59 @@ export function ProductDetail() {
           </Link>
         </div>
       </div>
+
+      {/* ── Fullscreen image lightbox ── */}
+      {lightboxOpen && mainImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setLightboxOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Fermer"
+            className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            <X size={24} />
+          </button>
+
+          {gallery.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); showImageAt(activeImage - 1) }}
+                aria-label="Photo précédente"
+                className="absolute left-3 sm:left-6 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+              >
+                <ChevronLeft size={26} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); showImageAt(activeImage + 1) }}
+                aria-label="Photo suivante"
+                className="absolute right-3 sm:right-6 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+              >
+                <ChevronRight size={26} />
+              </button>
+            </>
+          )}
+
+          <img
+            src={mainImage}
+            alt={product.name}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg select-none"
+          />
+
+          {gallery.length > 1 && (
+            <span className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium">
+              {activeImage + 1} / {gallery.length}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
