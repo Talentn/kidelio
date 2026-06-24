@@ -79,7 +79,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           {(slide.subtitle || !slide.title) && (
             <p className="text-white/90 text-sm md:text-lg leading-relaxed mb-8 max-w-md">
               {slide.subtitle ||
-                'Vêtements et accessoires pour bébés et enfants — livraison partout en Tunisie.'}
+                'Vêtements et accessoires pour femmes et enfants — livraison partout en Tunisie.'}
             </p>
           )}
           {href.startsWith('http') ? (

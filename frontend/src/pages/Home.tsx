@@ -95,7 +95,7 @@ export function Home() {
       '@type': 'WebSite',
       name: 'Kidelio',
       url: 'https://kideliowear.com',
-      description: 'La boutique en ligne dédiée aux bébés et enfants en Tunisie.',
+      description: 'La boutique en ligne dédiée aux femmes et aux enfants en Tunisie.',
       potentialAction: {
         '@type': 'SearchAction',
         target: 'https://kideliowear.com/produits?q={search_term_string}',

@@ -150,7 +150,7 @@ export function Layout() {
               <img src="/kidelio-logo.png" alt="Kidelio" className="h-12 w-auto object-contain brightness-0 invert opacity-90" />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
-              La boutique en ligne dédiée aux bébés et aux enfants en Tunisie.
+              La boutique en ligne dédiée aux femmes et aux enfants en Tunisie.
               Mode, jouets et essentiels à prix accessibles.
             </p>
             <div className="flex gap-3 mt-4">

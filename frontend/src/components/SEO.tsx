@@ -5,7 +5,7 @@ const SITE_NAME = 'Kidelio'
 const BASE_URL = 'https://kideliowear.com'
 const DEFAULT_IMAGE = `${BASE_URL}/kidelio-logo.png`
 const DEFAULT_DESCRIPTION =
-  'Kidelio — La boutique en ligne dédiée aux bébés et enfants en Tunisie. Vêtements, jouets et essentiels à prix accessibles. Livraison rapide, paiement à la livraison.'
+  'Kidelio — La boutique en ligne dédiée aux femmes et aux enfants en Tunisie. Vêtements, mode femme, jouets et essentiels à prix accessibles. Livraison rapide, paiement à la livraison.'
 
 interface SEOProps {
   title?: string
@@ -27,7 +27,7 @@ export function SEO({
   jsonLd,
 }: SEOProps) {
   const location = useLocation()
-  const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Mode & jouets pour enfants`
+  const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Mode femme & enfant`
   const canonicalPath = url ?? (location.pathname || '/')
   const canonicalUrl = `${BASE_URL}${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`
   const absoluteImage = image.startsWith('http') ? image : `${BASE_URL}${image}`

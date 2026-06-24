@@ -168,8 +168,7 @@ class FacebookCatFeedController < ApplicationController
 
   def variant_image_url(product, color)
     if color.images.attached?
-      # Meta only accepts JPEG/PNG (not WebP), so force JPEG for the feed.
-      json_variant_url(color.images.first, size: :large, format: :jpg)
+      feed_image_url(color.images.first)
     else
       primary_image_url(product)
     end
@@ -185,7 +184,7 @@ class FacebookCatFeedController < ApplicationController
     attachments = product.listing_image_attachments
     return nil if attachments.empty?
 
-    json_variant_url(attachments.first, size: :large, format: :jpg)
+    feed_image_url(attachments.first)
   rescue StandardError
     nil
   end
@@ -194,21 +193,31 @@ class FacebookCatFeedController < ApplicationController
     attachments = product.listing_image_attachments[1..]
     return [] if attachments.nil? || attachments.empty?
 
-    attachments.filter_map do |att|
-      json_variant_url(att, size: :large, format: :jpg)
-    rescue StandardError
-      nil
-    end
+    attachments.filter_map { |att| feed_image_url(att) }
   end
 
   def color_extra_image_urls(color)
     return [] unless color.images.attached?
 
-    color.images.to_a[1..].filter_map do |att|
-      json_variant_url(att, size: :large, format: :jpg)
-    rescue StandardError
-      nil
-    end
+    color.images.to_a[1..].filter_map { |att| feed_image_url(att) }
+  end
+
+  # Meta only accepts JPEG/PNG (not WebP) and fetches images directly, so we emit
+  # *proxy* URLs (HTTP 200 with the actual JPEG bytes) rather than the default
+  # redirect URLs that bounce to a short-lived signed disk URL. Returns nil on
+  # failure so we never serve an invalid (e.g. WebP original) image to the feed.
+  def feed_image_url(attachment)
+    return nil if attachment.nil?
+    return nil if attachment.respond_to?(:attached?) && !attachment.attached?
+
+    content_type = attachment.respond_to?(:content_type) ? attachment.content_type.to_s : ""
+    return nil unless content_type.start_with?("image/")
+
+    dims = VARIANT_SIZES.fetch(:large)
+    variant = attachment.variant(resize_to_limit: dims, format: :jpg, saver: { quality: 85 })
+    rails_storage_proxy_url(variant, **blob_url_options)
+  rescue StandardError
+    nil
   end
 
   def google_category(product)

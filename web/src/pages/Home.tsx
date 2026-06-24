@@ -29,7 +29,7 @@ export function Home() {
       <section className="hero">
         <div className="hero-content">
           <h1>Des sourires, des couleurs, des aventures</h1>
-          <p>Vêtements et essentiels pour bébés et enfants — livraison en Tunisie</p>
+          <p>Vêtements et essentiels pour femmes et enfants — livraison en Tunisie</p>
           <Link to="/produits" className="btn btn-primary btn-lg">
             Découvrir la boutique
           </Link>

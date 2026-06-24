@@ -18,7 +18,7 @@ export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: str
             avec eux
           </h1>
           <p className="text-gray-500 text-sm xs:text-base lg:text-lg leading-relaxed mb-8 max-w-md">
-            Vêtements, chaussures et accessoires pour bébés et enfants. Livraison partout en Tunisie.
+            Vêtements, chaussures et accessoires pour femmes et enfants. Livraison partout en Tunisie.
             Paiement à la livraison.
           </p>
           <div className="flex flex-col xs:flex-row gap-3 mb-8">
