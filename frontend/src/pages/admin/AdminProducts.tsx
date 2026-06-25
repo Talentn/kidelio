@@ -994,6 +994,7 @@ export function AdminProducts() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive" | "promo" | "featured" | "low">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [subCategoryFilter, setSubCategoryFilter] = useState<string>("all");
   const [sort, setSort] = useState<"recent" | "name" | "price-asc" | "price-desc" | "stock-asc" | "stock-desc">("recent");
 
   const [formOpen, setFormOpen] = useState(false);
@@ -1016,13 +1017,16 @@ export function AdminProducts() {
     apiAdmin<{ categories: AdminCategory[] }>("/categories").then((d) => setCategoryTree(d.categories)).catch(() => {});
   }, [load]);
 
-  const productParentId = useCallback(
+  const productCategoryIds = useCallback(
     (id?: number) => {
-      if (!id) return "";
-      return resolveAdminCategoryIds(categoryTree, id).parentId;
+      if (!id) return { parentId: "", subId: "" };
+      return resolveAdminCategoryIds(categoryTree, id);
     },
     [categoryTree],
   );
+
+  const selectedParent = categoryTree.find((c) => String(c.id) === categoryFilter);
+  const subCategories = selectedParent?.children ?? [];
 
   const filtered = useMemo(() => {
     const matchStatus = (p: Product) => {
@@ -1036,7 +1040,11 @@ export function AdminProducts() {
 
     const result = products.filter((p) => {
       if (search && !`${p.name} ${p.reference ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
-      if (categoryFilter !== "all" && productParentId(p.category_id) !== categoryFilter) return false;
+      if (categoryFilter !== "all") {
+        const { parentId, subId } = productCategoryIds(p.category_id);
+        if (parentId !== categoryFilter) return false;
+        if (subCategoryFilter !== "all" && subId !== subCategoryFilter) return false;
+      }
       return matchStatus(p);
     });
 
@@ -1061,7 +1069,7 @@ export function AdminProducts() {
         break;
     }
     return sorted;
-  }, [products, search, filter, categoryFilter, sort, productParentId]);
+  }, [products, search, filter, categoryFilter, subCategoryFilter, sort, productCategoryIds]);
 
   const confirmDelete = async () => {
     if (!toDelete) return;
@@ -1110,12 +1118,17 @@ export function AdminProducts() {
   ] as const;
 
   const hasActiveFilters =
-    search !== "" || filter !== "all" || categoryFilter !== "all" || sort !== "recent";
+    search !== "" ||
+    filter !== "all" ||
+    categoryFilter !== "all" ||
+    subCategoryFilter !== "all" ||
+    sort !== "recent";
 
   const resetFilters = () => {
     setSearch("");
     setFilter("all");
     setCategoryFilter("all");
+    setSubCategoryFilter("all");
     setSort("recent");
   };
 
@@ -1144,7 +1157,7 @@ export function AdminProducts() {
           <select
             className="input sm:w-52"
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => { setCategoryFilter(e.target.value); setSubCategoryFilter("all"); }}
             aria-label="Filtrer par catégorie"
           >
             <option value="all">Toutes les catégories</option>
@@ -1152,6 +1165,19 @@ export function AdminProducts() {
               <option key={c.id} value={String(c.id)}>{c.name}</option>
             ))}
           </select>
+          {subCategories.length > 0 && (
+            <select
+              className="input sm:w-52"
+              value={subCategoryFilter}
+              onChange={(e) => setSubCategoryFilter(e.target.value)}
+              aria-label="Filtrer par sous-catégorie"
+            >
+              <option value="all">Toutes les sous-catégories</option>
+              {subCategories.map((c) => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+            </select>
+          )}
           <select
             className="input sm:w-48"
             value={sort}
