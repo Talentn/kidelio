@@ -98,7 +98,7 @@ export function Checkout() {
   const walletDiscount = useWallet
     ? Math.min(walletBalance, Math.max(total - discount, 0))
     : 0
-  const shipping = total >= 200 ? 0 : 7
+  const shipping = total - discount >= 200 ? 0 : 7
   const grandTotal = total - discount - walletDiscount + shipping
 
   // Fire InitiateCheckout once — when items first become available

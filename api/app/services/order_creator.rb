@@ -71,7 +71,8 @@ class OrderCreator
 
     wallet_used = wallet_amount_to_apply(subtotal, discount)
 
-    shipping = Order.calculate_shipping(subtotal)
+    # Free-shipping threshold is evaluated on the amount AFTER the remise (discount).
+    shipping = Order.calculate_shipping(subtotal - discount)
     total = subtotal - discount - wallet_used + shipping
     raise Error, "Montant invalide" if total < 0
 
