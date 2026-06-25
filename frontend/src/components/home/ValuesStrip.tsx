@@ -3,8 +3,8 @@ import { Heart, Leaf, ShieldCheck, Truck } from 'lucide-react'
 const VALUES = [
   {
     icon: ShieldCheck,
-    title: 'Qualité pour enfants',
-    text: 'Des pièces sélectionnées pour le confort et la durabilité au quotidien.',
+    title: 'Qualité & confort',
+    text: 'Des pièces sélectionnées pour le style, le confort et la durabilité au quotidien.',
   },
   {
     icon: Truck,
@@ -14,7 +14,7 @@ const VALUES = [
   {
     icon: Leaf,
     title: 'Paiement à la livraison',
-    text: 'Payez en espèces à la réception — simple et rassurant pour les familles.',
+    text: 'Payez en espèces à la réception — simple et rassurant.',
   },
   {
     icon: Heart,
@@ -29,7 +29,7 @@ export function ValuesStrip() {
       <div className="text-center mb-8 md:mb-10">
         <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900">Pourquoi Kidelio ?</h2>
         <p className="text-gray-500 text-sm mt-2 max-w-lg mx-auto">
-          L&apos;expérience des boutiques enfants européennes, adaptée aux familles tunisiennes.
+          L&apos;élégance des boutiques de mode européennes, adaptée aux Tunisiennes.
         </p>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">

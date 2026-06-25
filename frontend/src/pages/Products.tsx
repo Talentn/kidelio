@@ -107,10 +107,10 @@ export function Products() {
   }, [onPromo, featuredOnly, age, activeCategory])
 
   const seoDescription = onPromo
-    ? 'Découvrez toutes les promotions Kidelio : mode femme, vêtements et jouets pour enfants à prix réduits en Tunisie.'
+    ? 'Découvrez toutes les promotions Kidelio : mode femme, robes, ensembles et essentiels à prix réduits en Tunisie.'
     : activeCategory
     ? `${activeCategory.name} sur Kidelio. Livraison rapide en Tunisie, paiement à la livraison.`
-    : 'Toute la boutique Kidelio : vêtements, mode femme, jouets et essentiels pour femmes et enfants en Tunisie.'
+    : 'Toute la boutique Kidelio : mode femme, robes, ensembles et une sélection enfant en Tunisie.'
 
   return (
     <div>

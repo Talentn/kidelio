@@ -21,7 +21,7 @@ type HeroSlider = {
 };
 
 const STATIC_FALLBACK: Record<string, string> = {
-  hero_fallback: "/hero-kids.png",
+  hero_fallback: "/hero-femme.png",
   banner_collection: "/banner-collection.png",
   banner_babies: "/banner-babies.png",
   banner_toys: "/banner-toys.png",

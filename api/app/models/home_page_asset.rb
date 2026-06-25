@@ -5,10 +5,10 @@ class HomePageAsset < ApplicationRecord
   KEYS = %w[hero_fallback banner_collection banner_babies banner_toys].freeze
 
   LABELS = {
-    "hero_fallback" => "Hero principal (sans carousel)",
-    "banner_collection" => "Bannière collection",
-    "banner_babies" => "Bannière bébés",
-    "banner_toys" => "Bannière jouets"
+    "hero_fallback" => "Image hero (page d'accueil, sans carousel)",
+    "banner_collection" => "Bannière « Mode Femme » (grande tuile)",
+    "banner_babies" => "Bannière « Robes » (tuile)",
+    "banner_toys" => "Bannière « Enfant » (tuile)"
   }.freeze
 
   has_one_attached :image

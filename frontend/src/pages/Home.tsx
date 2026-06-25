@@ -15,7 +15,7 @@ import type { HomeProduct } from '../components/home/ProductCard'
 const SLICE = 8
 
 const DEFAULT_ASSETS = {
-  hero_fallback: '/hero-kids.png',
+  hero_fallback: '/hero-femme.png',
   banner_collection: '/banner-collection.png',
   banner_babies: '/banner-babies.png',
   banner_toys: '/banner-toys.png',
@@ -95,7 +95,7 @@ export function Home() {
       '@type': 'WebSite',
       name: 'Kidelio',
       url: 'https://kideliowear.com',
-      description: 'La boutique en ligne dédiée aux femmes et aux enfants en Tunisie.',
+      description: 'Boutique de mode femme & enfant en Tunisie. Robes, prêt-à-porter et essentiels.',
       potentialAction: {
         '@type': 'SearchAction',
         target: 'https://kideliowear.com/produits?q={search_term_string}',
@@ -164,14 +164,14 @@ export function Home() {
           >
             <img
               src={img('banner_collection')}
-              alt="Collection été"
+              alt="Mode femme"
               className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
             <div className="absolute bottom-0 left-0 p-5 md:p-7">
-              <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">Collection été</p>
+              <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">Prêt-à-porter</p>
               <h3 className="font-display font-bold text-2xl md:text-3xl text-white leading-snug mb-3">
-                Vêtements &amp; accessoires
+                Mode Femme
               </h3>
               <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white border-b border-white pb-0.5 group-hover:gap-3 transition-all">
                 Découvrir <ArrowRight size={14} />
@@ -180,33 +180,33 @@ export function Home() {
           </Link>
           <div className="flex flex-col gap-3 md:gap-4">
             <Link
-              to="/produits?age=0-12"
+              to="/produits?q=robe"
               className="group relative overflow-hidden rounded-2xl h-48 md:h-auto md:flex-1 block"
             >
               <img
                 src={img('banner_babies')}
-                alt="Bébés"
+                alt="Robes femme"
                 className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 p-4 md:p-5">
-                <p className="text-white/70 text-[11px] font-bold uppercase tracking-widest mb-0.5">0 – 3 ans</p>
-                <h3 className="font-display font-bold text-lg md:text-xl text-white leading-tight">Bébés</h3>
+                <p className="text-white/70 text-[11px] font-bold uppercase tracking-widest mb-0.5">Tendance</p>
+                <h3 className="font-display font-bold text-lg md:text-xl text-white leading-tight">Robes</h3>
               </div>
             </Link>
             <Link
-              to="/produits?q=jouet"
+              to="/produits?age=6-12"
               className="group relative overflow-hidden rounded-2xl h-48 md:h-auto md:flex-1 block"
             >
               <img
                 src={img('banner_toys')}
-                alt="Jouets"
+                alt="Mode enfant"
                 className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 p-4 md:p-5">
-                <p className="text-white/70 text-[11px] font-bold uppercase tracking-widest mb-0.5">Tous âges</p>
-                <h3 className="font-display font-bold text-lg md:text-xl text-white leading-tight">Jouets</h3>
+                <p className="text-white/70 text-[11px] font-bold uppercase tracking-widest mb-0.5">Pour les petits</p>
+                <h3 className="font-display font-bold text-lg md:text-xl text-white leading-tight">Enfant</h3>
               </div>
             </Link>
           </div>

@@ -5,7 +5,7 @@ const SITE_NAME = 'Kidelio'
 const BASE_URL = 'https://kideliowear.com'
 const DEFAULT_IMAGE = `${BASE_URL}/kidelio-logo.png`
 const DEFAULT_DESCRIPTION =
-  'Kidelio — La boutique en ligne dédiée aux femmes et aux enfants en Tunisie. Vêtements, mode femme, jouets et essentiels à prix accessibles. Livraison rapide, paiement à la livraison.'
+  'Kidelio — Boutique de mode femme & enfant en Tunisie. Robes, prêt-à-porter, ensembles et essentiels à prix accessibles. Livraison rapide, paiement à la livraison.'
 
 interface SEOProps {
   title?: string

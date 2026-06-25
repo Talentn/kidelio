@@ -49,7 +49,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               {s.image_url ? (
                 <img
                   src={s.image_url}
-                  alt={s.title || 'Kidelio — Mode enfants'}
+                  alt={s.title || 'Kidelio — Mode femme'}
                   className="w-full h-full object-cover object-center"
                   loading="eager"
                   fetchPriority="high"

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Star, Truck } from 'lucide-react'
 
 /** Static hero when no admin sliders are configured */
-export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: string }) {
+export function FallbackHero({ heroImage = '/hero-femme.png' }: { heroImage?: string }) {
   return (
     <section className="relative w-full overflow-hidden bg-[#FDF8F5]">
       <div className="flex flex-col md:flex-row min-h-[420px] sm:min-h-[480px] md:min-h-[560px] lg:min-h-[620px]">
@@ -13,13 +13,13 @@ export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: str
           <h1 className="font-display text-4xl xs:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-[1.08] tracking-tight mb-5">
             La mode qui
             <br />
-            <em className="not-italic text-brand-500">grandit</em>
+            vous
             <br />
-            avec eux
+            <em className="not-italic text-brand-500">ressemble</em>
           </h1>
           <p className="text-gray-500 text-sm xs:text-base lg:text-lg leading-relaxed mb-8 max-w-md">
-            Vêtements, chaussures et accessoires pour femmes et enfants. Livraison partout en Tunisie.
-            Paiement à la livraison.
+            Robes, prêt-à-porter et accessoires pour femmes — et une sélection pour enfants.
+            Livraison partout en Tunisie. Paiement à la livraison.
           </p>
           <div className="flex flex-col xs:flex-row gap-3 mb-8">
             <Link
@@ -41,13 +41,13 @@ export function FallbackHero({ heroImage = '/hero-kids.png' }: { heroImage?: str
                 <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
               ))}
             </div>
-            <span className="text-gray-500 text-xs font-medium">Plus de 500 familles satisfaites</span>
+            <span className="text-gray-500 text-xs font-medium">Plus de 500 clientes satisfaites</span>
           </div>
         </div>
         <div className="relative w-full md:w-[52%] lg:w-[55%] order-1 md:order-2 h-72 xs:h-80 sm:h-96 md:h-auto overflow-hidden">
           <img
             src={heroImage}
-            alt="Kidelio — Mode enfants"
+            alt="Kidelio — Mode femme"
             className="w-full h-full object-cover object-center"
             loading="eager"
             fetchPriority="high"
