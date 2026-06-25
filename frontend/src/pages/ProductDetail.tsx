@@ -555,9 +555,6 @@ export function ProductDetail() {
                       }`}
                     >
                       {s.size}
-                      {!oos && (
-                        <span className="ml-1.5 text-xs font-normal text-gray-400">({s.stock})</span>
-                      )}
                     </button>
                   )
                 })}
@@ -576,7 +573,7 @@ export function ProductDetail() {
               <>
                 <div className="w-2.5 h-2.5 rounded-full bg-sage-500" />
                 <span className="text-sm font-semibold text-sage-600">
-                  {effectiveStock <= 5 ? `Plus que ${effectiveStock} en stock !` : 'En stock'}
+                  {effectiveStock < 10 ? 'Stock limité' : 'En stock'}
                 </span>
               </>
             ) : (
