@@ -38,6 +38,7 @@ type Product = {
   name: string
   slug: string
   description?: string
+  details?: { label: string; value: string }[]
   price: number
   promo_price?: number
   effective_price: number
@@ -465,10 +466,6 @@ export function ProductDetail() {
             />
           )}
 
-          {product.description && (
-            <p className="text-gray-600 leading-relaxed mb-6 text-base">{product.description}</p>
-          )}
-
           {/* ── Color picker ── */}
           {sortedColors.length > 0 && (
             <div className="mb-5">
@@ -513,6 +510,20 @@ export function ProductDetail() {
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {product.details && product.details.length > 0 && (
+            <div className="mb-6">
+              <h2 className="font-display font-semibold text-lg text-ink mb-3">Détails du produit</h2>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                {product.details.map((d, i) => (
+                  <div key={i} className="flex items-baseline justify-between gap-3 py-2 border-b border-gray-100">
+                    <dt className="text-sm text-gray-500">{d.label}</dt>
+                    <dd className="text-sm font-semibold text-gray-900 text-right">{d.value}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           )}
 

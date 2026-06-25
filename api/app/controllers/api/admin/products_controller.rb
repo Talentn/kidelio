@@ -67,7 +67,22 @@ module Api
           :name, :slug, :reference, :description, :price, :promo_price,
           :stock, :active, :featured, :on_promo, :category_id, :age_group
         )
-        cast_booleans(raw, :active, :featured, :on_promo)
+        raw = cast_booleans(raw, :active, :featured, :on_promo)
+        raw[:details] = parse_details(params[:details]) if params.key?(:details)
+        raw
+      end
+
+      # The admin form sends `details` as a JSON string of [{label, value}] rows.
+      def parse_details(raw)
+        data = raw.is_a?(String) ? (JSON.parse(raw) rescue []) : raw
+        Array(data).filter_map do |row|
+          row = row.respond_to?(:to_h) ? row.to_h : {}
+          label = row["label"].to_s.strip
+          value = row["value"].to_s.strip
+          next if label.blank? && value.blank?
+
+          { "label" => label, "value" => value }
+        end
       end
 
       def attach_images(product)
@@ -113,7 +128,10 @@ module Api
             }
           end
         }
-        json[:description] = product.description if detail
+        if detail
+          json[:description] = product.description
+          json[:details] = product.details
+        end
         json
       end
     end

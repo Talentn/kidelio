@@ -8,6 +8,10 @@ class Product < ApplicationRecord
   has_many :colors, -> { ordered }, class_name: "ProductColor", dependent: :destroy
   has_many_attached :images
 
+  # Structured spec list shown on the product page, e.g.
+  # [{ "label" => "Matière", "value" => "100% Polyester" }, ...]
+  attribute :details, :json, default: []
+
   validates :name, :slug, :price, presence: true
   validates :slug, uniqueness: true
   validates :reference, uniqueness: true, allow_nil: true
@@ -16,6 +20,7 @@ class Product < ApplicationRecord
   validate :category_must_be_leaf, if: -> { category_id.present? }
 
   before_validation :normalize_optional_strings
+  before_validation :normalize_details
 
   scope :active, -> { where(active: true) }
   scope :featured, -> { where(featured: true, active: true) }
@@ -53,6 +58,18 @@ class Product < ApplicationRecord
     self.reference = reference.presence
     self.age_group = age_group.presence
     self.description = description.presence
+  end
+
+  # Keep only well-formed, non-empty { label, value } rows.
+  def normalize_details
+    self.details = Array(details).filter_map do |row|
+      row = row.respond_to?(:to_h) ? row.to_h : {}
+      label = row["label"].to_s.strip
+      value = row["value"].to_s.strip
+      next if label.blank? && value.blank?
+
+      { "label" => label, "value" => value }
+    end
   end
 
   def category_must_be_leaf

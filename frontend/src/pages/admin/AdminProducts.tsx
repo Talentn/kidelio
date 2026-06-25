@@ -49,9 +49,12 @@ type Product = {
   age_group?: string;
   category_id?: number;
   description?: string;
+  details?: ProductDetailRow[];
   image_urls: string[];
   colors?: ProductColor[];
 };
+
+type ProductDetailRow = { label: string; value: string };
 
 function slugify(s: string) {
   return s
@@ -114,6 +117,7 @@ function ProductForm({
   const [colorName, setColorName] = useState("");
   const [colorHex, setColorHex] = useState("#e8b4bc");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [details, setDetails] = useState<ProductDetailRow[]>([]);
   const [parentCategoryId, setParentCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
   const filePreviews = useFilePreviews(files);
@@ -152,8 +156,15 @@ function ProductForm({
       setColorName("");
       setColorHex("#e8b4bc");
       setSelectedSizes([]);
+      setDetails(product?.details ?? []);
       setCurrent(product);
       setSlugTouched(!!product);
+      // The list payload omits details; load the full product when editing.
+      if (product?.id) {
+        apiAdmin<{ product: Product }>(`/products/${product.id}`)
+          .then((d) => setDetails(d.product.details ?? []))
+          .catch(() => {});
+      }
       const { parentId, subId } = resolveAdminCategoryIds(categoryTree, product?.category_id ?? null);
       setParentCategoryId(parentId);
       setSubCategoryId(subId);
@@ -200,7 +211,10 @@ function ProductForm({
       fd.append("name", form.name);
       fd.append("slug", form.slug || slugify(form.name));
       fd.append("reference", form.reference);
-      fd.append("description", form.description);
+      fd.append(
+        "details",
+        JSON.stringify(details.filter((d) => d.label.trim() || d.value.trim())),
+      );
       fd.append("price", form.price);
       if (form.promo_price) fd.append("promo_price", form.promo_price);
       fd.append("stock", form.stock || "0");
@@ -364,8 +378,47 @@ function ProductForm({
           </div>
 
           <div className="sm:col-span-2">
-            <label className="input-label">Description</label>
-            <textarea className="input resize-none" rows={3} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <label className="input-label">Détails du produit</label>
+            <p className="text-xs text-slate-500 mb-2">
+              Ajoutez les caractéristiques (ex. « Matière » → « 100% Polyester »). Elles s&apos;affichent sur la page produit.
+            </p>
+            <div className="space-y-2">
+              {details.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    className="input flex-1"
+                    placeholder="Libellé (ex. Matière)"
+                    value={row.label}
+                    onChange={(e) =>
+                      setDetails((d) => d.map((r, idx) => (idx === i ? { ...r, label: e.target.value } : r)))
+                    }
+                  />
+                  <input
+                    className="input flex-1"
+                    placeholder="Valeur (ex. 100% Polyester)"
+                    value={row.value}
+                    onChange={(e) =>
+                      setDetails((d) => d.map((r, idx) => (idx === i ? { ...r, value: e.target.value } : r)))
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDetails((d) => d.filter((_, idx) => idx !== i))}
+                    className="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors"
+                    aria-label="Supprimer la ligne"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setDetails((d) => [...d, { label: "", value: "" }])}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700"
+            >
+              <Plus size={16} /> Ajouter une ligne
+            </button>
           </div>
 
           {/* New product: color + images + sizes in one step */}

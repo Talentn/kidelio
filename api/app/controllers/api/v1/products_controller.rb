@@ -78,6 +78,7 @@ module Api
         }
         if detail
           json[:description] = product.description
+          json[:details] = product.details
           json[:rating] = rating_json(product)
           json[:reviews_preview] = reviews_preview_json(product)
           json[:colors] = product.colors.map do |c|
