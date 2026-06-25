@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { isSuperOps } from '../../lib/superOps'
 import { apiAdmin } from '../../lib/api'
+import { goGet } from '../../lib/goApi'
 import { useLivePoll } from '../../hooks/useLivePoll'
 import { ToastProvider } from './ui'
 
@@ -25,6 +26,74 @@ function useAdminStats() {
   return stats
 }
 
+type QueueRoom = { id: string }
+
+// Short chime via Web Audio — no audio asset needed.
+function playChatChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new Ctx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(1175, ctx.currentTime + 0.12)
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.47)
+    osc.onended = () => ctx.close()
+  } catch { /* audio not available */ }
+}
+
+function notifyNewChat(waiting: number) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    new Notification('Nouveau chat en attente', {
+      body: waiting > 1 ? `${waiting} conversations en attente` : 'Un client attend une réponse',
+      icon: '/kidelio-heads-favicon.png',
+      tag: 'kidelio-chat',
+    })
+  } catch { /* notifications not available */ }
+}
+
+// Polls the live-chat queue and alerts (badge + sound + notification) on new chats.
+function useChatAlerts() {
+  const [waiting, setWaiting] = useState(0)
+  const prev = useRef<number | null>(null)
+
+  const refresh = useCallback(() => {
+    goGet<{ queued: QueueRoom[]; active: QueueRoom[] }>('/chat/admin/queue')
+      .then((d) => setWaiting((d.queued || []).length))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+  useLivePoll(refresh, [refresh], { interval: import.meta.env.PROD ? 10_000 : 4_000 })
+
+  // Ask for browser notification permission once.
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+  }, [])
+
+  // Alert only when the waiting count increases (a new chat arrived).
+  useEffect(() => {
+    const before = prev.current
+    if (before !== null && waiting > before) {
+      playChatChime()
+      notifyNewChat(waiting)
+    }
+    prev.current = waiting
+  }, [waiting])
+
+  return waiting
+}
+
 function Badge({ count }: { count: number }) {
   if (!count) return null
   return (
@@ -38,6 +107,7 @@ export function AdminLayout() {
   const navigate   = useNavigate()
   const { user, logout, isAdmin } = useAuth()
   const stats      = useAdminStats()
+  const chatWaiting = useChatAlerts()
   const [mobileOpen, setMobileOpen] = useState(false)
   const superOps   = isSuperOps(user?.email)
 
@@ -61,7 +131,7 @@ export function AdminLayout() {
     ...(isAdmin ? [{ to: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users }] : []),
     { to: '/admin/attributs',  label: 'Attributs',        icon: Ruler },
     { to: '/admin/activite',   label: 'Activité',         icon: Activity },
-    { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle },
+    { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle,  badge: chatWaiting },
     { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive },
     { to: '/admin/panier-live', label: 'Comportement clients', icon: Circle },
     ...(superOps ? [
