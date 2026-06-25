@@ -992,7 +992,9 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "inactive" | "promo" | "low">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive" | "promo" | "featured" | "low">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sort, setSort] = useState<"recent" | "name" | "price-asc" | "price-desc" | "stock-asc" | "stock-desc">("recent");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -1014,16 +1016,52 @@ export function AdminProducts() {
     apiAdmin<{ categories: AdminCategory[] }>("/categories").then((d) => setCategoryTree(d.categories)).catch(() => {});
   }, [load]);
 
+  const productParentId = useCallback(
+    (id?: number) => {
+      if (!id) return "";
+      return resolveAdminCategoryIds(categoryTree, id).parentId;
+    },
+    [categoryTree],
+  );
+
   const filtered = useMemo(() => {
-    return products.filter((p) => {
-      if (search && !`${p.name} ${p.reference ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+    const matchStatus = (p: Product) => {
       if (filter === "active") return p.active;
       if (filter === "inactive") return !p.active;
       if (filter === "promo") return p.on_promo;
+      if (filter === "featured") return p.featured;
       if (filter === "low") return p.stock < 5;
       return true;
+    };
+
+    const result = products.filter((p) => {
+      if (search && !`${p.name} ${p.reference ?? ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+      if (categoryFilter !== "all" && productParentId(p.category_id) !== categoryFilter) return false;
+      return matchStatus(p);
     });
-  }, [products, search, filter]);
+
+    const sorted = [...result];
+    switch (sort) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "price-asc":
+        sorted.sort((a, b) => Number(a.price) - Number(b.price));
+        break;
+      case "price-desc":
+        sorted.sort((a, b) => Number(b.price) - Number(a.price));
+        break;
+      case "stock-asc":
+        sorted.sort((a, b) => a.stock - b.stock);
+        break;
+      case "stock-desc":
+        sorted.sort((a, b) => b.stock - a.stock);
+        break;
+      default:
+        break;
+    }
+    return sorted;
+  }, [products, search, filter, categoryFilter, sort, productParentId]);
 
   const confirmDelete = async () => {
     if (!toDelete) return;
@@ -1067,8 +1105,19 @@ export function AdminProducts() {
     { key: "active", label: "Actifs" },
     { key: "inactive", label: "Inactifs" },
     { key: "promo", label: "En promo" },
+    { key: "featured", label: "Coup de cœur" },
     { key: "low", label: "Stock bas" },
   ] as const;
+
+  const hasActiveFilters =
+    search !== "" || filter !== "all" || categoryFilter !== "all" || sort !== "recent";
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilter("all");
+    setCategoryFilter("all");
+    setSort("recent");
+  };
 
   return (
     <AdminPage
@@ -1081,17 +1130,43 @@ export function AdminProducts() {
       }
     >
       {/* Search + filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            className="input pl-10"
-            placeholder="Rechercher par nom ou référence..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input pl-10"
+              placeholder="Rechercher par nom ou référence..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="input sm:w-52"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filtrer par catégorie"
+          >
+            <option value="all">Toutes les catégories</option>
+            {categoryTree.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            className="input sm:w-48"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+            aria-label="Trier"
+          >
+            <option value="recent">Tri : par défaut</option>
+            <option value="name">Nom (A → Z)</option>
+            <option value="price-asc">Prix (croissant)</option>
+            <option value="price-desc">Prix (décroissant)</option>
+            <option value="stock-asc">Stock (croissant)</option>
+            <option value="stock-desc">Stock (décroissant)</option>
+          </select>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -1102,6 +1177,15 @@ export function AdminProducts() {
               {f.label}
             </button>
           ))}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="chip flex items-center gap-1 text-slate-500 hover:text-red-500 whitespace-nowrap"
+            >
+              <X size={13} /> Réinitialiser
+            </button>
+          )}
         </div>
       </div>
 
