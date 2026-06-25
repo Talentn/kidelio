@@ -15,6 +15,7 @@ type Stats = { unread_messages: number; pending_orders: number }
 
 function useAdminStats() {
   const [stats, setStats] = useState<Stats>({ unread_messages: 0, pending_orders: 0 })
+  const prevOrders = useRef<number | null>(null)
 
   const refresh = useCallback(() => {
     apiAdmin<Stats>('/dashboard/stats').then(setStats).catch(() => {})
@@ -22,6 +23,16 @@ function useAdminStats() {
 
   useEffect(() => { refresh() }, [refresh])
   useLivePoll(refresh, [refresh], { interval: import.meta.env.PROD ? 15_000 : 5_000 })
+
+  // Alert when the number of pending orders increases (a new order arrived).
+  useEffect(() => {
+    const before = prevOrders.current
+    if (before !== null && stats.pending_orders > before) {
+      playChatChime()
+      notifyNewOrder(stats.pending_orders)
+    }
+    prevOrders.current = stats.pending_orders
+  }, [stats.pending_orders])
 
   return stats
 }
@@ -56,6 +67,17 @@ function notifyNewChat(waiting: number) {
       body: waiting > 1 ? `${waiting} conversations en attente` : 'Un client attend une réponse',
       icon: '/kidelio-heads-favicon.png',
       tag: 'kidelio-chat',
+    })
+  } catch { /* notifications not available */ }
+}
+
+function notifyNewOrder(pending: number) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    new Notification('Nouvelle commande reçue', {
+      body: pending > 1 ? `${pending} commandes en attente de traitement` : 'Une nouvelle commande vient d\u2019arriver',
+      icon: '/kidelio-heads-favicon.png',
+      tag: 'kidelio-order',
     })
   } catch { /* notifications not available */ }
 }
