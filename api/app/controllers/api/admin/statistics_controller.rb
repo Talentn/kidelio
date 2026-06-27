@@ -162,17 +162,44 @@ module Api
       end
 
       def top_products(orders)
-        OrderItem
-          .where(order_id: orders.select(:id))
-          .group(:product_name)
+        sold_order_ids = orders.where.not(status: %i[cancelled refunded]).select(:id)
+
+        rows = OrderItem
+          .where(order_id: sold_order_ids)
+          .group(:product_name, :product_slug)
           .select(
             "product_name",
+            "product_slug",
             "SUM(quantity) AS quantity",
-            "SUM(quantity * unit_price) AS revenue"
+            "SUM(quantity * unit_price) AS revenue",
+            "COUNT(DISTINCT order_id) AS orders_count"
           )
           .order("quantity DESC")
           .limit(10)
-          .map { |row| { product_name: row.product_name, quantity: row.quantity.to_i, revenue: row.revenue.to_f } }
+          .to_a
+
+        slugs = rows.map(&:product_slug).compact.uniq
+        products_by_slug = Product
+          .where(slug: slugs)
+          .includes(:colors, images_attachments: :blob)
+          .index_by(&:slug)
+
+        rows.map do |row|
+          product = products_by_slug[row.product_slug]
+          {
+            product_id: product&.id,
+            product_name: row.product_name,
+            product_slug: row.product_slug,
+            quantity: row.quantity.to_i,
+            revenue: row.revenue.to_f,
+            orders_count: row.orders_count.to_i,
+            image_url: product ? json_variant_url(product.listing_image_attachments.first, size: :thumb) : nil,
+            current_price: product&.effective_price&.to_f,
+            stock: product&.stock,
+            active: product&.active,
+            available: product.present?
+          }
+        end
       end
 
       def top_governorates(revenue_orders)

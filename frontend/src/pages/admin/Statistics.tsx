@@ -11,6 +11,8 @@ import {
   MapPin,
   Tag,
   Star,
+  ExternalLink,
+  ImageOff,
 } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { orderStatusLabel } from "../../lib/orderStatus";
@@ -62,7 +64,19 @@ type Statistics = {
   };
   revenue_by_day: { date: string; orders: number; revenue: number }[];
   orders_by_status: { status: string; count: number }[];
-  top_products: { product_name: string; quantity: number; revenue: number }[];
+  top_products: {
+    product_id: number | null;
+    product_name: string;
+    product_slug: string | null;
+    quantity: number;
+    revenue: number;
+    orders_count: number;
+    image_url: string | null;
+    current_price: number | null;
+    stock: number | null;
+    active: boolean | null;
+    available: boolean;
+  }[];
   top_governorates: { governorate: string; orders: number; revenue: number }[];
   promo_usage: { orders_with_promo: number; total_discount: number };
   reviews_by_day: { date: string; reviews: number }[];
@@ -532,55 +546,125 @@ export function Statistics() {
             </Card>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Top products */}
-            <Card className="p-5">
-              <h2 className="font-bold text-slate-900 mb-4">Produits les plus vendus</h2>
-              {data.top_products.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-slate-500 border-b border-slate-100">
-                        <th className="pb-2 font-semibold">Produit</th>
-                        <th className="pb-2 font-semibold text-right">Qté</th>
-                        <th className="pb-2 font-semibold text-right">CA</th>
+          {/* Top products */}
+          <Card className="p-5">
+            <h2 className="font-bold text-slate-900 mb-1">Produits les plus commandés</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Classement par quantité vendue (hors annulations et remboursements)
+            </p>
+            {data.top_products.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b border-slate-100">
+                      <th className="pb-2 font-semibold w-8">#</th>
+                      <th className="pb-2 font-semibold">Produit</th>
+                      <th className="pb-2 font-semibold text-right">Commandes</th>
+                      <th className="pb-2 font-semibold text-right">Qté vendue</th>
+                      <th className="pb-2 font-semibold text-right">Stock</th>
+                      <th className="pb-2 font-semibold text-right">Prix actuel</th>
+                      <th className="pb-2 font-semibold text-right">CA</th>
+                      <th className="pb-2 font-semibold text-right">Détails</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.top_products.map((p, i) => (
+                      <tr
+                        key={p.product_slug ?? p.product_name}
+                        className="border-b border-slate-50 last:border-0"
+                      >
+                        <td className="py-2.5 text-slate-400 font-semibold">{i + 1}</td>
+                        <td className="py-2.5 pr-2">
+                          <div className="flex items-center gap-3">
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.product_name}
+                                className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <ImageOff size={16} className="text-slate-300" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-800 truncate">{p.product_name}</p>
+                              {!p.available && (
+                                <span className="text-[11px] text-slate-400">Produit supprimé</span>
+                              )}
+                              {p.available && p.active === false && (
+                                <span className="text-[11px] text-amber-600 font-medium">Inactif</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right text-slate-600">{p.orders_count}</td>
+                        <td className="py-2.5 text-right font-semibold text-slate-800">{p.quantity}</td>
+                        <td className="py-2.5 text-right">
+                          {p.stock === null ? (
+                            <span className="text-slate-300">—</span>
+                          ) : (
+                            <span
+                              className={`font-medium ${
+                                p.stock <= 0
+                                  ? "text-red-600"
+                                  : p.stock < 5
+                                    ? "text-amber-600"
+                                    : "text-slate-600"
+                              }`}
+                            >
+                              {p.stock}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 text-right text-slate-600">
+                          {p.current_price !== null ? formatTND(p.current_price) : "—"}
+                        </td>
+                        <td className="py-2.5 text-right font-semibold text-slate-800">
+                          {formatTND(p.revenue)}
+                        </td>
+                        <td className="py-2.5 text-right">
+                          {p.product_slug && p.available ? (
+                            <a
+                              href={`/produits/${p.product_slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 font-semibold"
+                            >
+                              Voir
+                              <ExternalLink size={14} />
+                            </a>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {data.top_products.map((p) => (
-                        <tr key={p.product_name} className="border-b border-slate-50 last:border-0">
-                          <td className="py-2.5 font-medium text-slate-800 pr-2">{p.product_name}</td>
-                          <td className="py-2.5 text-right text-slate-600">{p.quantity}</td>
-                          <td className="py-2.5 text-right font-semibold text-slate-800">
-                            {formatTND(p.revenue)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-slate-400 text-sm">Aucune vente sur cette période.</p>
-              )}
-            </Card>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-slate-400 text-sm">Aucune vente sur cette période.</p>
+            )}
+          </Card>
 
-            {/* Top governorates */}
-            <Card className="p-5">
-              <h2 className="font-bold text-slate-900 mb-1 flex items-center gap-2">
-                <MapPin size={18} className="text-brand-500" />
-                Top gouvernorats
-              </h2>
-              <p className="text-sm text-slate-500 mb-4">Par nombre de commandes</p>
-              <HorizontalBars
-                items={data.top_governorates.map((g) => ({
-                  label: g.governorate,
-                  orders: g.orders,
-                }))}
-                labelKey="label"
-                valueKey="orders"
-              />
-            </Card>
-          </div>
+          {/* Top governorates */}
+          <Card className="p-5 lg:max-w-2xl">
+            <h2 className="font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <MapPin size={18} className="text-brand-500" />
+              Top gouvernorats
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">Par nombre de commandes</p>
+            <HorizontalBars
+              items={data.top_governorates.map((g) => ({
+                label: g.governorate,
+                orders: g.orders,
+              }))}
+              labelKey="label"
+              valueKey="orders"
+            />
+          </Card>
 
           {/* Extra insights */}
           <Card className="p-5">
