@@ -11,7 +11,9 @@ module Api
       end
 
       def show
-        order = Order.includes(:order_items, :user).find(params[:id])
+        order = Order
+          .includes(:user, order_items: [ :product, { product: [ :colors, { images_attachments: :blob } ] } ])
+          .find(params[:id])
         render json: { order: admin_order_json(order, detail: true) }
       end
 
@@ -105,12 +107,19 @@ module Api
             shipping_governorate: order.shipping_governorate,
             shipping_delegation: order.shipping_delegation,
             shipping_address: order.shipping_address,
-            items: order.order_items.map do |i|
-              i.slice(:product_name, :quantity, :unit_price, :size_label, :color_label)
-            end
+            items: order.order_items.map { |i| order_item_json(i) }
           )
         end
         json
+      end
+
+      def order_item_json(item)
+        product = item.product
+        item.slice(:product_name, :quantity, :unit_price, :size_label, :color_label).merge(
+          product_slug: item.product_slug || product&.slug,
+          product_available: product.present? && product.active,
+          image_url: product ? json_variant_url(product.listing_image_attachments.first, size: :thumb) : nil
+        )
       end
     end
   end

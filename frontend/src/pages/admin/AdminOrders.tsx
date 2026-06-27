@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Eye, ShoppingCart, Phone, MapPin, User as UserIcon, Trash2 } from "lucide-react";
+import { Search, Eye, ShoppingCart, Phone, MapPin, User as UserIcon, Trash2, ImageOff } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import { ORDER_STATUSES, orderStatusLabel, orderStatusSelectClass, paymentMethodLabel } from "../../lib/orderStatus";
 import { useLivePoll } from "../../hooks/useLivePoll";
@@ -11,6 +11,9 @@ type OrderItem = {
   unit_price: number;
   size_label?: string;
   color_label?: string;
+  product_slug?: string | null;
+  product_available?: boolean;
+  image_url?: string | null;
 };
 
 type Order = {
@@ -121,16 +124,42 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted }: {
             <h3 className="font-bold text-slate-900 text-sm mb-2">Articles</h3>
             <div className="border border-slate-100 rounded-xl overflow-hidden">
               {order.items?.map((it, i) => (
-                <div key={i} className="flex justify-between items-center px-4 py-3 border-b border-slate-50 last:border-0">
-                  <div>
-                    <p className="font-semibold text-slate-800 text-sm">{it.product_name}</p>
-                    <p className="text-xs text-slate-400">
-                      {[it.size_label, it.color_label].filter(Boolean).join(" · ")}
-                      {(it.size_label || it.color_label) && " · "}
-                      {Number(it.unit_price).toFixed(3)} TND × {it.quantity}
-                    </p>
+                <div key={i} className="flex justify-between items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {it.image_url ? (
+                      <img
+                        src={it.image_url}
+                        alt={it.product_name}
+                        className="w-12 h-12 rounded-lg object-cover bg-slate-100 flex-shrink-0"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <ImageOff size={16} className="text-slate-300" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-800 text-sm truncate">{it.product_name}</p>
+                      <p className="text-xs text-slate-400">
+                        {[it.size_label, it.color_label].filter(Boolean).join(" · ")}
+                        {(it.size_label || it.color_label) && " · "}
+                        {Number(it.unit_price).toFixed(3)} TND × {it.quantity}
+                      </p>
+                      {it.product_slug && it.product_available ? (
+                        <a
+                          href={`/produits/${it.product_slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 mt-1"
+                        >
+                          <Eye size={13} /> Voir le produit
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Produit indisponible</span>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-bold text-slate-900 text-sm">{(Number(it.unit_price) * it.quantity).toFixed(3)}</span>
+                  <span className="font-bold text-slate-900 text-sm flex-shrink-0">{(Number(it.unit_price) * it.quantity).toFixed(3)}</span>
                 </div>
               ))}
             </div>
