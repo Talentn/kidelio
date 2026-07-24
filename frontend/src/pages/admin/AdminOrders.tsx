@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Eye, ShoppingCart, Phone, PhoneCall, MapPin, User as UserIcon, Trash2, ImageOff, RefreshCw, Truck, Pencil, X, Check } from "lucide-react";
+import { Search, Eye, ShoppingCart, Phone, PhoneCall, MapPin, User as UserIcon, Trash2, ImageOff, RefreshCw, Truck, Pencil, X, Check, Plus, Minus, Printer } from "lucide-react";
 import { apiAdmin, apiV1 } from "../../lib/api";
 import { ORDER_STATUSES, orderStatusLabel, orderStatusSelectClass, paymentMethodLabel } from "../../lib/orderStatus";
 import { useLivePoll } from "../../hooks/useLivePoll";
 import { AdminPage, Card, Modal, StatusBadge, useToast } from "../../components/admin/ui";
 
 type OrderItem = {
+  id: number;
+  product_id?: number | null;
   product_name: string;
   quantity: number;
   unit_price: number;
@@ -14,6 +16,21 @@ type OrderItem = {
   product_slug?: string | null;
   product_available?: boolean;
   image_url?: string | null;
+};
+
+type PickerSize = { id: number; size: string; stock: number };
+type PickerColor = { id: number; name: string; sizes: PickerSize[] };
+type PickerProduct = {
+  id: number;
+  name: string;
+  reference?: string | null;
+  price: number;
+  promo_price?: number | null;
+  on_promo?: boolean;
+  stock: number;
+  active: boolean;
+  image_urls?: string[];
+  colors: PickerColor[];
 };
 
 type Order = {
@@ -38,6 +55,8 @@ type Order = {
   intigo_status?: number | null;
   intigo_status_label?: string | null;
   intigo_synced_at?: string | null;
+  intigo_can_open?: boolean;
+  intigo_is_exchange?: boolean;
   intigo_city_id?: number | null;
   intigo_district_id?: number | null;
   items?: OrderItem[];
@@ -273,6 +292,164 @@ function ShippingEditForm({ order, onSaved, onCancel }: {
   );
 }
 
+/** Product/variant picker used to add an article to an existing order. */
+function AddItemPicker({ adding, onAdd, onCancel }: {
+  adding: boolean;
+  onAdd: (payload: { product_id: number; color_label?: string; size_label?: string; quantity: number }) => void;
+  onCancel: () => void;
+}) {
+  const [products, setProducts] = useState<PickerProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [productId, setProductId] = useState<number | null>(null);
+  const [colorName, setColorName] = useState("");
+  const [sizeName, setSizeName] = useState("");
+  const [qty, setQty] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiAdmin<{ products: PickerProduct[] }>("/products")
+      .then((d) => { if (!cancelled) setProducts((d.products ?? []).filter((p) => p.active)); })
+      .catch(() => { if (!cancelled) setProducts([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products.slice(0, 30);
+    return products
+      .filter((p) => p.name.toLowerCase().includes(q) || (p.reference ?? "").toLowerCase().includes(q))
+      .slice(0, 30);
+  }, [products, query]);
+
+  const product = products.find((p) => p.id === productId) ?? null;
+  const color = product?.colors.find((c) => c.name === colorName) ?? null;
+  const size = color?.sizes.find((s) => s.size === sizeName) ?? null;
+  const unitPrice = product ? (product.on_promo && product.promo_price ? product.promo_price : product.price) : 0;
+  const maxStock = size ? size.stock
+    : color ? color.sizes.reduce((sum, s) => sum + s.stock, 0) || product?.stock || 0
+    : product?.stock ?? 0;
+
+  const canAdd = !!product
+    && (product.colors.length === 0 || !!color)
+    && (!color || color.sizes.length === 0 || !!size)
+    && qty >= 1;
+
+  const selectClass = "w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-300 outline-none";
+
+  return (
+    <div className="border border-brand-100 bg-brand-50/40 rounded-xl p-4 space-y-3">
+      <div className="relative">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setProductId(null); setColorName(""); setSizeName(""); }}
+          placeholder={loading ? "Chargement des produits..." : "Rechercher un produit (nom ou référence)..."}
+          disabled={loading}
+          className={`${selectClass} pl-9`}
+        />
+      </div>
+
+      {!product && (
+        <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white">
+          {matches.length === 0 && !loading ? (
+            <p className="p-3 text-sm text-slate-400">Aucun produit trouvé.</p>
+          ) : (
+            matches.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { setProductId(p.id); setColorName(""); setSizeName(""); setQty(1); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+              >
+                {p.image_urls?.[0] ? (
+                  <img src={p.image_urls[0]} alt="" className="w-9 h-9 rounded-lg object-cover bg-slate-100 flex-shrink-0" loading="lazy" />
+                ) : (
+                  <span className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0"><ImageOff size={14} className="text-slate-300" /></span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                  <span className="block text-xs text-slate-400">
+                    {(p.on_promo && p.promo_price ? p.promo_price : p.price)} TND{p.reference ? ` · ${p.reference}` : ""}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {product && (
+        <>
+          <div className="flex items-center justify-between gap-2 bg-white rounded-xl border border-slate-100 px-3 py-2">
+            <p className="text-sm font-semibold text-slate-800 truncate">{product.name}</p>
+            <button type="button" onClick={() => setProductId(null)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex-shrink-0">
+              Changer
+            </button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {product.colors.length > 0 && (
+              <select value={colorName} onChange={(e) => { setColorName(e.target.value); setSizeName(""); }} className={selectClass}>
+                <option value="">Couleur...</option>
+                {product.colors.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            )}
+            {color && color.sizes.length > 0 && (
+              <select value={sizeName} onChange={(e) => setSizeName(e.target.value)} className={selectClass}>
+                <option value="">Taille...</option>
+                {color.sizes.map((s) => (
+                  <option key={s.id} value={s.size} disabled={s.stock <= 0}>
+                    {s.size} {s.stock <= 0 ? "(rupture)" : `(stock : ${s.stock})`}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              type="number"
+              min={1}
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+              className={selectClass}
+              aria-label="Quantité"
+            />
+          </div>
+          <p className="text-xs text-slate-500">
+            {Number(unitPrice).toFixed(3)} TND × {qty} = <span className="font-semibold">{(Number(unitPrice) * qty).toFixed(3)} TND</span>
+            {maxStock > 0 && <span className="text-slate-400"> — stock disponible : {maxStock}</span>}
+          </p>
+        </>
+      )}
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={!canAdd || adding}
+          onClick={() => product && onAdd({
+            product_id: product.id,
+            color_label: colorName || undefined,
+            size_label: sizeName || undefined,
+            quantity: qty,
+          })}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-2 rounded-xl transition-colors disabled:opacity-50"
+        >
+          <Check size={15} />
+          {adding ? "Ajout..." : "Ajouter à la commande"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={adding}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors disabled:opacity-50"
+        >
+          <X size={15} />
+          Fermer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }: {
   id: number;
   onClose: () => void;
@@ -286,8 +463,12 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
   const [deleting, setDeleting] = useState(false);
   const [sendingIntigo, setSendingIntigo] = useState(false);
   const [syncingIntigo, setSyncingIntigo] = useState(false);
+  const [printingBordereau, setPrintingBordereau] = useState(false);
+  const [savingFlag, setSavingFlag] = useState<string | null>(null);
   const [relancing, setRelancing] = useState(false);
   const [editingShipping, setEditingShipping] = useState(false);
+  const [showItemPicker, setShowItemPicker] = useState(false);
+  const [itemBusy, setItemBusy] = useState<number | "add" | null>(null);
 
   useEffect(() => {
     apiAdmin<{ order: Order }>(`/orders/${id}`).then((d) => setOrder(d.order)).catch(() => {});
@@ -354,6 +535,39 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
     }
   };
 
+  const printBordereau = async () => {
+    setPrintingBordereau(true);
+    try {
+      const data = await apiAdmin<{ url: string }>(`/orders/${id}/bordereau`, { method: "POST" });
+      window.open(data.url, "_blank", "noopener");
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur Intigo", "error");
+    } finally {
+      setPrintingBordereau(false);
+    }
+  };
+
+  const toggleIntigoFlag = async (field: "intigo_can_open" | "intigo_is_exchange", value: boolean) => {
+    setSavingFlag(field);
+    try {
+      const data = await apiAdmin<{ order: Order; intigo_warnings?: string[] | null }>(`/orders/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ [field]: value }),
+      });
+      setOrder(data.order);
+      onOrderPatched(data.order);
+      if (data.intigo_warnings && data.intigo_warnings.length > 0) {
+        data.intigo_warnings.forEach((w) => notify(w, "error"));
+      } else if (order?.intigo_nid) {
+        notify("Option mise à jour sur Intigo");
+      }
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setSavingFlag(null);
+    }
+  };
+
   const relanceIntigo = async (acceptFee = false) => {
     if (!order?.intigo_nid) return;
     setRelancing(true);
@@ -384,6 +598,64 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
     }
   };
 
+  const applyItemsResponse = (data: { order: Order; intigo_warnings?: string[] | null }) => {
+    setOrder(data.order);
+    onOrderPatched(data.order);
+    if (data.intigo_warnings && data.intigo_warnings.length > 0) {
+      data.intigo_warnings.forEach((w) => notify(w, "error"));
+    }
+  };
+
+  const addItem = async (payload: { product_id: number; color_label?: string; size_label?: string; quantity: number }) => {
+    setItemBusy("add");
+    try {
+      const data = await apiAdmin<{ order: Order; intigo_warnings?: string[] | null }>(`/orders/${id}/add_item`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      applyItemsResponse(data);
+      notify("Article ajouté à la commande");
+      setShowItemPicker(false);
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setItemBusy(null);
+    }
+  };
+
+  const changeItemQty = async (item: OrderItem, quantity: number) => {
+    if (quantity < 1) return;
+    setItemBusy(item.id);
+    try {
+      const data = await apiAdmin<{ order: Order; intigo_warnings?: string[] | null }>(`/orders/${id}/update_item`, {
+        method: "PATCH",
+        body: JSON.stringify({ item_id: item.id, quantity }),
+      });
+      applyItemsResponse(data);
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setItemBusy(null);
+    }
+  };
+
+  const removeItem = async (item: OrderItem) => {
+    if (!window.confirm(`Retirer « ${item.product_name} » de la commande ?\nLe stock sera remis en inventaire.`)) return;
+    setItemBusy(item.id);
+    try {
+      const data = await apiAdmin<{ order: Order; intigo_warnings?: string[] | null }>(`/orders/${id}/remove_item`, {
+        method: "DELETE",
+        body: JSON.stringify({ item_id: item.id }),
+      });
+      applyItemsResponse(data);
+      notify("Article retiré — stock remis en inventaire");
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setItemBusy(null);
+    }
+  };
+
   const deleteOrder = async () => {
     if (!order) return;
     if (!window.confirm(
@@ -402,6 +674,8 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
       setDeleting(false);
     }
   };
+
+  const itemsLocked = !!order && ["delivered", "cancelled", "refunded"].includes(order.status);
 
   return (
     <Modal open onClose={onClose} title={order ? `Commande ${order.order_number}` : "Chargement..."} size="lg">
@@ -515,6 +789,17 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                 {order.intigo_nid && (
                   <button
                     type="button"
+                    onClick={printBordereau}
+                    disabled={printingBordereau}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    <Printer size={15} />
+                    {printingBordereau ? "Génération..." : "Imprimer le bordereau"}
+                  </button>
+                )}
+                {order.intigo_nid && (
+                  <button
+                    type="button"
                     onClick={syncIntigo}
                     disabled={syncingIntigo}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-2 rounded-xl transition-colors disabled:opacity-50"
@@ -549,14 +834,63 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                 </button>
               </div>
             </div>
+
+            {/* Parcel options — pushed to Intigo (modifiable while the parcel is in pickup) */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 pt-3 border-t border-slate-200/70">
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={order.intigo_can_open ?? true}
+                  disabled={savingFlag !== null}
+                  onChange={(e) => toggleIntigoFlag("intigo_can_open", e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300"
+                />
+                <span className={savingFlag === "intigo_can_open" ? "opacity-50" : ""}>
+                  Le client peut ouvrir le colis
+                </span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={order.intigo_is_exchange ?? false}
+                  disabled={savingFlag !== null}
+                  onChange={(e) => toggleIntigoFlag("intigo_is_exchange", e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-300"
+                />
+                <span className={savingFlag === "intigo_is_exchange" ? "opacity-50" : ""}>
+                  Colis d'échange
+                </span>
+              </label>
+              {order.intigo_nid && (
+                <span className="text-[11px] text-slate-400">
+                  Modifiable sur Intigo uniquement avant l'enlèvement du colis.
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Items */}
           <div>
-            <h3 className="font-bold text-slate-900 text-sm mb-2">Articles</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-slate-900 text-sm">Articles</h3>
+              {!itemsLocked && !showItemPicker && (
+                <button
+                  type="button"
+                  onClick={() => setShowItemPicker(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <Plus size={13} /> Ajouter un article
+                </button>
+              )}
+            </div>
+            {showItemPicker && (
+              <div className="mb-3">
+                <AddItemPicker adding={itemBusy === "add"} onAdd={addItem} onCancel={() => setShowItemPicker(false)} />
+              </div>
+            )}
             <div className="border border-slate-100 rounded-xl overflow-hidden">
-              {order.items?.map((it, i) => (
-                <div key={i} className="flex justify-between items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0">
+              {order.items?.map((it) => (
+                <div key={it.id} className="flex justify-between items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0">
                   <div className="flex items-center gap-3 min-w-0">
                     {it.image_url ? (
                       <img
@@ -591,10 +925,52 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                       )}
                     </div>
                   </div>
-                  <span className="font-bold text-slate-900 text-sm flex-shrink-0">{(Number(it.unit_price) * it.quantity).toFixed(3)}</span>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {!itemsLocked && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={itemBusy === it.id || it.quantity <= 1}
+                          onClick={() => changeItemQty(it, it.quantity - 1)}
+                          className="w-7 h-7 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center transition-colors"
+                          aria-label="Diminuer la quantité"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="w-7 text-center text-sm font-bold text-slate-800">{it.quantity}</span>
+                        <button
+                          type="button"
+                          disabled={itemBusy === it.id}
+                          onClick={() => changeItemQty(it, it.quantity + 1)}
+                          className="w-7 h-7 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center transition-colors"
+                          aria-label="Augmenter la quantité"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    )}
+                    <span className="font-bold text-slate-900 text-sm w-16 text-right">{(Number(it.unit_price) * it.quantity).toFixed(3)}</span>
+                    {!itemsLocked && (
+                      <button
+                        type="button"
+                        disabled={itemBusy === it.id || (order.items?.length ?? 0) <= 1}
+                        onClick={() => removeItem(it)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 transition-colors"
+                        aria-label={`Retirer ${it.product_name}`}
+                        title={(order.items?.length ?? 0) <= 1 ? "Dernier article — supprimez plutôt la commande" : "Retirer l'article"}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+            {itemsLocked && (
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Articles non modifiables ({orderStatusLabel(order.status)}).
+              </p>
+            )}
           </div>
 
           {/* Totals */}

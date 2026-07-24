@@ -65,6 +65,25 @@ class IntigoClient
     post("/parcels/#{nid}/change-phone", { phone: phone })
   end
 
+  # Change COD price on an existing parcel (allowed while status < 5000).
+  def change_parcel_price(nid, price)
+    post("/parcels/#{nid}/change-price", { price: price })
+  end
+
+  # Partial update of a parcel (only allowed in pickup status 1000).
+  # Accepts can_open, is_exchange, description, package_size, etc.
+  def update_parcel(nid, attrs)
+    patch("/parcels/#{nid}", attrs.compact)
+  end
+
+  # Printable bordereau page for up to 50 parcels → URL string.
+  def bordereau_url(nids)
+    response = post("/parcels/bordereau", { nids: Array(nids) })
+    return response if response.is_a?(String)
+
+    response["url"] || response["bordereau_url"] || response["link"]
+  end
+
   private
 
   def get(path)
@@ -73,6 +92,10 @@ class IntigoClient
 
   def post(path, payload)
     request(Net::HTTP::Post, path, payload)
+  end
+
+  def patch(path, payload)
+    request(Net::HTTP::Patch, path, payload)
   end
 
   def request(klass, path, payload = nil)

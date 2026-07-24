@@ -16,7 +16,7 @@ class Order < ApplicationRecord
     refunded: 7
   }
 
-  SHIPPING_COST = 7.to_d
+  SHIPPING_COST = 8.to_d
   FREE_SHIPPING_THRESHOLD = 200.to_d
 
   validates :order_number, :shipping_governorate, :shipping_delegation,

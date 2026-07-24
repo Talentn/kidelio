@@ -63,6 +63,44 @@ module Api
         }, status: :unprocessable_entity
       end
 
+      # ── Line item edits (add / quantity / remove) ─────────────────────────
+
+      def add_item
+        edit_items do |editor|
+          editor.add_item(
+            product_id: params[:product_id],
+            color_label: params[:color_label],
+            size_label: params[:size_label],
+            quantity: params[:quantity].presence || 1
+          )
+        end
+      end
+
+      def update_item
+        edit_items { |editor| editor.update_quantity(params[:item_id], params[:quantity]) }
+      end
+
+      def remove_item
+        edit_items { |editor| editor.remove_item(params[:item_id]) }
+      end
+
+      # Printable delivery slip — Intigo generates an HTML page and returns its URL.
+      def bordereau
+        order = Order.find(params[:id])
+        if order.intigo_nid.blank?
+          return render json: { errors: [ "Aucun colis Intigo pour cette commande" ] }, status: :unprocessable_entity
+        end
+
+        url = IntigoClient.new.bordereau_url([ order.intigo_nid ])
+        if url.blank?
+          return render json: { errors: [ "Intigo n'a pas renvoyé d'URL de bordereau" ] }, status: :unprocessable_entity
+        end
+
+        render json: { url: url }
+      rescue IntigoClient::Error => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+      end
+
       # Pull the parcel status from Intigo for one order.
       def sync_intigo
         order = Order.find(params[:id])
@@ -119,15 +157,37 @@ module Api
 
       private
 
+      # Runs an OrderItemsEditor operation, pushes the new COD total to Intigo
+      # when a parcel exists, and renders the refreshed order.
+      def edit_items
+        order = Order.find(params[:id])
+        yield(OrderItemsEditor.new(order))
+        intigo_warnings = IntigoParcelEditor.new(order).push_changes(order.previous_changes)
+        render json: {
+          order: admin_order_json(order.reload, detail: true),
+          intigo_warnings: intigo_warnings.presence
+        }.compact
+      rescue OrderItemsEditor::Error, ActiveRecord::RecordNotFound => e
+        message = e.is_a?(ActiveRecord::RecordNotFound) ? "Article introuvable" : e.message
+        render json: {
+          errors: [ message ],
+          order: order ? admin_order_json(order.reload, detail: true) : nil
+        }.compact, status: :unprocessable_entity
+      end
+
       def order_params
         permitted = params.permit(
           :status, :notes,
           :guest_name, :guest_phone, :guest_email,
           :shipping_governorate, :shipping_delegation, :shipping_address,
-          :intigo_city_id, :intigo_district_id
+          :intigo_city_id, :intigo_district_id,
+          :intigo_can_open, :intigo_is_exchange
         )
         %i[intigo_city_id intigo_district_id].each do |key|
           permitted[key] = permitted[key].presence&.to_i if permitted.key?(key)
+        end
+        %i[intigo_can_open intigo_is_exchange].each do |key|
+          permitted[key] = ActiveModel::Type::Boolean.new.cast(permitted[key]) if permitted.key?(key)
         end
         permitted
       end
@@ -157,6 +217,8 @@ module Api
           intigo_status: order.intigo_status,
           intigo_status_label: order.intigo_status_label,
           intigo_synced_at: order.intigo_synced_at,
+          intigo_can_open: order.intigo_can_open,
+          intigo_is_exchange: order.intigo_is_exchange,
           user: order.user&.slice(:id, :name, :email)
         }
         if detail
@@ -174,7 +236,7 @@ module Api
 
       def order_item_json(item)
         product = item.product
-        item.slice(:product_name, :quantity, :unit_price, :size_label, :color_label).merge(
+        item.slice(:id, :product_id, :product_name, :quantity, :unit_price, :size_label, :color_label).merge(
           product_slug: item.product_slug || product&.slug,
           product_available: product.present? && product.active,
           image_url: product ? json_variant_url(product.listing_image_attachments.first, size: :thumb) : nil

@@ -295,7 +295,7 @@ export function ProductDetail() {
     product,
     rating,
     product.reviews_preview ?? [],
-    storeConfig?.shipping_cost ?? 7,
+    storeConfig?.shipping_cost ?? 8,
   )
 
   return (

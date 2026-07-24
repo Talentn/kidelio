@@ -8,7 +8,7 @@ export function CartDrawer() {
   const { cartOpen, closeCart } = useUI();
   const { items, loading, updateQty, removeItem, total, count } = useCart();
 
-  const shipping = total >= 200 ? 0 : 7;
+  const shipping = total >= 200 ? 0 : 8;
 
   const variantOf = (item: (typeof items)[number]): CartVariant => ({
     colorId: item.colorId,

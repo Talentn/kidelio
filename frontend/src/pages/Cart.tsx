@@ -6,7 +6,7 @@ import { SEO } from '../components/SEO'
 export function Cart() {
   const { items, loading, updateQty, removeItem, total } = useCart()
 
-  const shipping = total >= 200 ? 0 : 7
+  const shipping = total >= 200 ? 0 : 8
   const grandTotal = total + shipping
 
   const variantOf = (item: (typeof items)[number]): CartVariant => ({

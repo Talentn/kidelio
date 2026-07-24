@@ -28,7 +28,7 @@ const MERCHANT_RETURN_POLICY = {
   returnFees: 'https://schema.org/FreeReturn',
 }
 
-function buildShippingDetails(shippingCost = 7) {
+function buildShippingDetails(shippingCost = 8) {
   return {
     '@type': 'OfferShippingDetails',
     shippingRate: {
@@ -90,7 +90,7 @@ export function buildProductJsonLd(
   product: ProductSchemaInput,
   rating: ProductRating,
   reviews: ProductReviewPreview[] = [],
-  shippingCost = 7,
+  shippingCost = 8,
 ) {
   const productUrl = `${BASE_URL}/produits/${product.slug}`
   const images = product.image_urls.length

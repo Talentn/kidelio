@@ -87,6 +87,10 @@ Rails.application.routes.draw do
           post :send_to_intigo
           post :sync_intigo
           post :relance_intigo
+          post :bordereau
+          post :add_item
+          patch :update_item
+          delete :remove_item
         end
         collection do
           post :sync_intigo_all

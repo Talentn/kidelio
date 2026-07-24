@@ -36,7 +36,8 @@ class IntigoParcelCreator
       price: cod_price,
       package_size: ENV.fetch("INTIGO_PACKAGE_SIZE", "1").to_i,
       description: parcel_description,
-      can_open: true,
+      can_open: @order.intigo_can_open,
+      is_exchange: @order.intigo_is_exchange,
       cid: @order.order_number.to_s.truncate(50)
     }
     payload[:pickup_index] = pickup_index if pickup_index.present?
