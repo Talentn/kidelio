@@ -1,7 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Shield, UserCircle, UserPlus, Search, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Users, Shield, UserCircle, UserPlus, Search, Loader2, Pencil, Trash2, LayoutGrid } from 'lucide-react'
 import { apiAdmin } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { isSuperOps } from '../../lib/superOps'
+import { ADMIN_SECTIONS } from '../../lib/adminSections'
 import { AdminPage, Card, Modal, useToast } from '../../components/admin/ui'
 
 type AdminUser = {
@@ -11,6 +13,8 @@ type AdminUser = {
   phone?: string
   role: string
   provider?: string
+  admin_sections?: string[] | null
+  super_admin?: boolean
   fidelity_points: number
   orders_count: number
   created_at: string
@@ -148,6 +152,114 @@ function EditUserModal({
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Pencil size={18} />}
           Enregistrer
+        </button>
+      </form>
+    </Modal>
+  )
+}
+
+/** Super-admin only: choose which back-office sections a staff account sees. */
+function SectionsModal({
+  user,
+  open,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUser | null
+  open: boolean
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { notify } = useToast()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [fullAccess, setFullAccess] = useState(true)
+  const [selected, setSelected] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!user || !open) return
+    const restricted = Array.isArray(user.admin_sections)
+    setFullAccess(!restricted)
+    setSelected(restricted ? user.admin_sections as string[] : ADMIN_SECTIONS.map((s) => s.key))
+    setError('')
+  }, [user, open])
+
+  const toggle = (key: string) => {
+    setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
+  }
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+    if (!fullAccess && selected.length === 0) {
+      setError('Sélectionnez au moins une section.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      await apiAdmin(`/users/${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ admin_sections: fullAccess ? 'all' : selected }),
+      })
+      notify(`Sections de ${user.name} mises à jour`)
+      onSaved()
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!user) return null
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Sections visibles — ${user.name}`} size="md">
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-slate-500">
+          Choisissez les sections du back-office visibles par ce compte. Le tableau de bord reste toujours accessible.
+        </p>
+
+        <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+          <input
+            type="checkbox"
+            checked={fullAccess}
+            onChange={(e) => setFullAccess(e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-brand-500 focus:ring-brand-300"
+          />
+          <span className="text-sm font-semibold text-slate-800">Accès complet (toutes les sections)</span>
+        </label>
+
+        {!fullAccess && (
+          <div className="grid sm:grid-cols-2 gap-1.5 max-h-72 overflow-y-auto pr-1">
+            {ADMIN_SECTIONS.map((section) => (
+              <label
+                key={section.key}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(section.key)}
+                  onChange={() => toggle(section.key)}
+                  className="w-4 h-4 rounded border-slate-300 text-brand-500 focus:ring-brand-300"
+                />
+                <span className="text-sm text-slate-700">{section.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
+        >
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <LayoutGrid size={18} />}
+          Enregistrer les sections
         </button>
       </form>
     </Modal>
@@ -433,6 +545,8 @@ export function AdminUsers() {
   const [savingId, setSavingId] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [sectionsUser, setSectionsUser] = useState<AdminUser | null>(null)
+  const superAdmin = isSuperOps(currentUser?.email)
   const [filter, setFilter] = useState<'all' | 'staff' | 'client'>('all')
   const [search, setSearch] = useState('')
 
@@ -610,9 +724,29 @@ export function AdminUsers() {
                           ))}
                         </select>
                       </div>
+                      {STAFF_ROLES.includes(user.role as typeof STAFF_ROLES[number]) && (
+                        <p className="text-[11px] text-slate-400 mt-1 ml-6">
+                          {user.super_admin
+                            ? 'Super admin'
+                            : Array.isArray(user.admin_sections)
+                              ? `${user.admin_sections.length} section${user.admin_sections.length > 1 ? 's' : ''}`
+                              : 'Toutes les sections'}
+                        </p>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        {superAdmin && STAFF_ROLES.includes(user.role as typeof STAFF_ROLES[number]) && !user.super_admin && (
+                          <button
+                            type="button"
+                            onClick={() => setSectionsUser(user)}
+                            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-brand-600 transition-colors"
+                            aria-label={`Sections visibles de ${user.name}`}
+                            title="Sections visibles"
+                          >
+                            <LayoutGrid size={16} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setEditUser(user)}
@@ -651,6 +785,13 @@ export function AdminUsers() {
         user={editUser}
         open={!!editUser}
         onClose={() => setEditUser(null)}
+        onSaved={load}
+      />
+
+      <SectionsModal
+        user={sectionsUser}
+        open={!!sectionsUser}
+        onClose={() => setSectionsUser(null)}
         onSaved={load}
       />
     </AdminPage>

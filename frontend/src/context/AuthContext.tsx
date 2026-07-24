@@ -8,6 +8,8 @@ export type User = {
   name: string;
   phone?: string;
   role: string;
+  /** Staff only — null/undefined = access to all admin sections. */
+  admin_sections?: string[] | null;
   fidelity_points: number;
   wallet_balance?: number;
   loyalty_spend_progress?: number;

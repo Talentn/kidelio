@@ -84,6 +84,7 @@ module Api
           :shipping_governorate, :shipping_delegation, :shipping_address,
           :shipping_postal_code, :promo_code, :payment_method, :notes,
           :address_id, :save_address, :use_wallet,
+          :intigo_city_id, :intigo_district_id,
           items: %i[product_id quantity size_label color_label]
         )
       end

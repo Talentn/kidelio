@@ -86,6 +86,8 @@ class OrderCreator
         shipping_delegation: @params[:shipping_delegation],
         shipping_address: @params[:shipping_address],
         shipping_postal_code: @params[:shipping_postal_code],
+        intigo_city_id: @params[:intigo_city_id].presence&.to_i,
+        intigo_district_id: @params[:intigo_district_id].presence&.to_i,
         subtotal: subtotal,
         shipping_cost: shipping,
         discount_amount: discount,

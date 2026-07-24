@@ -18,8 +18,31 @@ class User < ApplicationRecord
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 
+  # Canonical keys for the back-office sections. Must stay in sync with
+  # frontend/src/lib/adminSections.ts. "dashboard" is always accessible.
+  ADMIN_SECTIONS = %w[
+    dashboard statistics products stock orders reviews categories homepage
+    messages promos promo_codes users attributes activity chat chat_archives
+    client_analytics
+  ].freeze
+
   def staff?
     employee? || admin?
+  end
+
+  # The super admin (SUPER_OPS_EMAIL) always sees everything and is the only
+  # one allowed to configure other staff accounts' visible sections.
+  def super_admin?
+    email.to_s.strip.downcase == ENV.fetch("SUPER_OPS_EMAIL", "alaghabi98@gmail.com").strip.downcase
+  end
+
+  # admin_sections == nil means "all sections" (default for every staff account).
+  def admin_section_allowed?(section)
+    return true if super_admin?
+    return true if admin_sections.nil?
+
+    section = section.to_s
+    section == "dashboard" || Array(admin_sections).include?(section)
   end
 
   def self.from_omniauth(auth)

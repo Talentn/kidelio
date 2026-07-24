@@ -65,6 +65,8 @@ Rails.application.routes.draw do
       get "rewards", to: "rewards#show"
       post "rewards/claim", to: "rewards#claim"
       resources :contact_messages, only: [:create], path: "contact"
+      get "shipping-regions/cities", to: "shipping_regions#cities"
+      get "shipping-regions/cities/:city_id/districts", to: "shipping_regions#districts"
     end
 
     namespace :admin do
@@ -80,7 +82,16 @@ Rails.application.routes.draw do
           resources :sizes, only: %i[create update destroy], controller: "product_color_sizes"
         end
       end
-      resources :orders, only: %i[index show update destroy]
+      resources :orders, only: %i[index show update destroy] do
+        member do
+          post :send_to_intigo
+          post :sync_intigo
+          post :relance_intigo
+        end
+        collection do
+          post :sync_intigo_all
+        end
+      end
       resources :product_reviews, only: %i[index destroy], path: "reviews"
       resources :categories, only: %i[index create update destroy]
       resources :size_attributes, only: %i[index create update destroy], path: "size-attributes"

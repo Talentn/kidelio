@@ -11,12 +11,8 @@ import { clearUtms, getStoredUtms } from '../lib/utm'
 import { SEO } from '../components/SEO'
 import { useStorePromoOffer } from '../hooks/useStorePromoOffer'
 
-const GOVERNORATES = [
-  'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan',
-  'Bizerte', 'Béja', 'Jendouba', 'Kef', 'Siliana', 'Sousse',
-  'Monastir', 'Mahdia', 'Sfax', 'Kairouan', 'Kasserine', 'Sidi Bouzid',
-  'Gabès', 'Medenine', 'Tataouine', 'Gafsa', 'Tozeur', 'Kebili',
-]
+type IntigoCity = { id: number; name: string }
+type IntigoDistrict = { id: number; name: string; city_id?: number }
 
 type SavedAddress = {
   id: number
@@ -42,6 +38,14 @@ function FieldGroup({ title, icon, children }: { title: string; icon: React.Reac
       <div className="space-y-3">{children}</div>
     </div>
   )
+}
+
+function normalizePlace(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
 }
 
 export function Checkout() {
@@ -71,6 +75,13 @@ export function Checkout() {
   const [governorate, setGovernorate] = useState('')
   const [delegation, setDelegation] = useState('')
   const [streetAddress, setStreetAddress] = useState('')
+  const [intigoCityId, setIntigoCityId] = useState<number | null>(null)
+  const [intigoDistrictId, setIntigoDistrictId] = useState<number | null>(null)
+  const [intigoCities, setIntigoCities] = useState<IntigoCity[]>([])
+  const [intigoDistricts, setIntigoDistricts] = useState<IntigoDistrict[]>([])
+  const [regionsLoading, setRegionsLoading] = useState(true)
+  const [districtsLoading, setDistrictsLoading] = useState(false)
+  const [districtsFetchedFor, setDistrictsFetchedFor] = useState<number | null>(null)
 
   const promoIdentity = useMemo(
     () => ({
@@ -94,6 +105,74 @@ export function Checkout() {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    let cancelled = false
+    setRegionsLoading(true)
+    api<{ cities: IntigoCity[] }>('/shipping-regions/cities')
+      .then((d) => {
+        if (!cancelled) setIntigoCities(d.cities ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setIntigoCities([])
+      })
+      .finally(() => {
+        if (!cancelled) setRegionsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!intigoCityId) {
+      setIntigoDistricts([])
+      return
+    }
+    let cancelled = false
+    setDistrictsLoading(true)
+    api<{ districts: IntigoDistrict[] }>(`/shipping-regions/cities/${intigoCityId}/districts`)
+      .then((d) => {
+        if (!cancelled) setIntigoDistricts(d.districts ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setIntigoDistricts([])
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDistrictsLoading(false)
+          setDistrictsFetchedFor(intigoCityId)
+        }
+      })
+    return () => { cancelled = true }
+  }, [intigoCityId])
+
+  // If the Intigo regions API is unavailable (down / not configured), fall back
+  // to free-text inputs so checkout is never blocked. The API matches the
+  // governorate/delegation names when the parcel is created on Intigo.
+  const regionsUnavailable = !regionsLoading && intigoCities.length === 0
+  const districtsUnavailable =
+    regionsUnavailable ||
+    (intigoCityId != null && districtsFetchedFor === intigoCityId && !districtsLoading && intigoDistricts.length === 0)
+
+  const selectIntigoCity = (cityId: number) => {
+    const city = intigoCities.find((c) => c.id === cityId)
+    setIntigoCityId(cityId || null)
+    setGovernorate(city?.name ?? '')
+    setIntigoDistrictId(null)
+    setDelegation('')
+  }
+
+  const selectIntigoDistrict = (districtId: number) => {
+    const district = intigoDistricts.find((d) => d.id === districtId)
+    setIntigoDistrictId(districtId || null)
+    setDelegation(district?.name ?? '')
+  }
+
+  const matchIntigoCity = useCallback((nameValue: string) => {
+    const target = normalizePlace(nameValue)
+    return intigoCities.find((c) => normalizePlace(c.name) === target)
+      ?? intigoCities.find((c) => normalizePlace(c.name).includes(target) || target.includes(normalizePlace(c.name)))
+      ?? null
+  }, [intigoCities])
 
   const walletDiscount = useWallet
     ? Math.min(walletBalance, Math.max(total - discount, 0))
@@ -141,10 +220,44 @@ export function Checkout() {
     setSelectedAddressId(addr.id)
     setName(addr.full_name)
     setPhone(addr.phone)
-    setGovernorate(addr.governorate)
-    setDelegation(addr.delegation)
     setStreetAddress(addr.street_address)
+
+    const city = matchIntigoCity(addr.governorate)
+    if (city) {
+      setIntigoCityId(city.id)
+      setGovernorate(city.name)
+    } else {
+      setIntigoCityId(null)
+      setGovernorate(addr.governorate)
+    }
+    setIntigoDistrictId(null)
+    setDelegation(addr.delegation)
   }
+
+  // When districts load for a saved/free-text delegation, lock the Intigo district id.
+  useEffect(() => {
+    if (!delegation || intigoDistricts.length === 0) return
+    if (intigoDistrictId && intigoDistricts.some((d) => d.id === intigoDistrictId)) return
+
+    const target = normalizePlace(delegation)
+    const match = intigoDistricts.find((d) => normalizePlace(d.name) === target)
+      ?? intigoDistricts.find((d) => normalizePlace(d.name).includes(target) || target.includes(normalizePlace(d.name)))
+    if (match) {
+      setIntigoDistrictId(match.id)
+      setDelegation(match.name)
+    }
+  }, [intigoDistricts, delegation, intigoDistrictId])
+
+  // Rematch gouvernorat once Intigo cities are loaded (saved addresses).
+  useEffect(() => {
+    if (!governorate || intigoCities.length === 0) return
+    if (intigoCityId && intigoCities.some((c) => c.id === intigoCityId)) return
+    const city = matchIntigoCity(governorate)
+    if (city) {
+      setIntigoCityId(city.id)
+      setGovernorate(city.name)
+    }
+  }, [intigoCities, governorate, intigoCityId, matchIntigoCity])
 
   const selectSavedAddress = (addr: SavedAddress) => {
     setAddressMode('saved')
@@ -234,6 +347,8 @@ export function Checkout() {
       shipping_governorate: governorate,
       shipping_delegation: delegation,
       shipping_address: streetAddress,
+      intigo_city_id: intigoCityId || undefined,
+      intigo_district_id: intigoDistrictId || undefined,
       promo_code: promo || undefined,
       payment_method: 'cash',
       use_wallet: useWallet && walletDiscount > 0,
@@ -413,29 +528,65 @@ export function Checkout() {
                 <>
                   <div>
                     <label className="input-label">Gouvernorat *</label>
-                    <select
-                      name="governorate"
-                      required
-                      value={governorate}
-                      onChange={(e) => setGovernorate(e.target.value)}
-                      className="input"
-                    >
-                      <option value="">Choisir un gouvernorat</option>
-                      {GOVERNORATES.map((g) => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
+                    {regionsUnavailable ? (
+                      <input
+                        name="governorate"
+                        required
+                        value={governorate}
+                        onChange={(e) => setGovernorate(e.target.value)}
+                        placeholder="Ex : Tunis"
+                        className="input"
+                      />
+                    ) : (
+                      <select
+                        name="governorate"
+                        required
+                        value={intigoCityId ?? ''}
+                        onChange={(e) => selectIntigoCity(Number(e.target.value))}
+                        className="input"
+                        disabled={regionsLoading}
+                      >
+                        <option value="">
+                          {regionsLoading ? 'Chargement...' : 'Choisir un gouvernorat'}
+                        </option>
+                        {intigoCities.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div>
-                    <label className="input-label">Délégation / Ville *</label>
-                    <input
-                      name="delegation"
-                      placeholder="Ex: La Marsa"
-                      required
-                      value={delegation}
-                      onChange={(e) => setDelegation(e.target.value)}
-                      className="input"
-                    />
+                    <label className="input-label">Délégation *</label>
+                    {districtsUnavailable ? (
+                      <input
+                        name="delegation"
+                        required
+                        value={delegation}
+                        onChange={(e) => setDelegation(e.target.value)}
+                        placeholder="Ex : La Marsa"
+                        className="input"
+                      />
+                    ) : (
+                      <select
+                        name="delegation"
+                        required
+                        value={intigoDistrictId ?? ''}
+                        onChange={(e) => selectIntigoDistrict(Number(e.target.value))}
+                        className="input"
+                        disabled={!intigoCityId || districtsLoading}
+                      >
+                        <option value="">
+                          {!intigoCityId
+                            ? 'Choisir d\'abord un gouvernorat'
+                            : districtsLoading
+                              ? 'Chargement...'
+                              : 'Choisir une délégation'}
+                        </option>
+                        {intigoDistricts.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="input-label">Adresse complète *</label>

@@ -5,6 +5,6 @@ class ProcessOrderJob < ApplicationJob
   def perform(order_id)
     order = Order.find(order_id)
     Rails.logger.info("[ProcessOrderJob] Order #{order.order_number} queued for notifications")
-    # Phase 2: email/SMS, JAX submit, Meta CAPI
+    # Intigo colis are created manually from admin (send_to_intigo), not auto.
   end
 end

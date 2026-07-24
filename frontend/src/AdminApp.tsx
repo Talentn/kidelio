@@ -4,6 +4,7 @@ import { AdminLayout } from "./components/admin/AdminLayout";
 import { RequireStaff } from "./components/admin/RequireStaff";
 import { RequireAdmin } from "./components/admin/RequireAdmin";
 import { RequireSuperOps } from "./components/admin/RequireSuperOps";
+import { RequireSection } from "./components/admin/RequireSection";
 
 const Dashboard       = lazy(() => import("./pages/admin/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Statistics    = lazy(() => import("./pages/admin/Statistics").then((m) => ({ default: m.Statistics })));
@@ -41,24 +42,24 @@ export default function AdminApp() {
         <Route element={<RequireStaff />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="statistiques" element={<Statistics />} />
-            <Route path="produits" element={<AdminProducts />} />
-            <Route path="stock" element={<AdminStock />} />
-            <Route path="commandes" element={<AdminOrders />} />
-            <Route path="avis" element={<AdminReviews />} />
-            <Route path="categories" element={<AdminCategories />} />
-            <Route path="accueil" element={<AdminHomepage />} />
-            <Route path="messages" element={<AdminMessages />} />
-            <Route path="attributs" element={<AdminAttributes />} />
-            <Route path="promos" element={<AdminPromos />} />
-            <Route path="codes-promo" element={<AdminPromoCodes />} />
+            <Route path="statistiques" element={<RequireSection section="statistics"><Statistics /></RequireSection>} />
+            <Route path="produits" element={<RequireSection section="products"><AdminProducts /></RequireSection>} />
+            <Route path="stock" element={<RequireSection section="stock"><AdminStock /></RequireSection>} />
+            <Route path="commandes" element={<RequireSection section="orders"><AdminOrders /></RequireSection>} />
+            <Route path="avis" element={<RequireSection section="reviews"><AdminReviews /></RequireSection>} />
+            <Route path="categories" element={<RequireSection section="categories"><AdminCategories /></RequireSection>} />
+            <Route path="accueil" element={<RequireSection section="homepage"><AdminHomepage /></RequireSection>} />
+            <Route path="messages" element={<RequireSection section="messages"><AdminMessages /></RequireSection>} />
+            <Route path="attributs" element={<RequireSection section="attributes"><AdminAttributes /></RequireSection>} />
+            <Route path="promos" element={<RequireSection section="promos"><AdminPromos /></RequireSection>} />
+            <Route path="codes-promo" element={<RequireSection section="promo_codes"><AdminPromoCodes /></RequireSection>} />
             <Route element={<RequireAdmin />}>
-              <Route path="utilisateurs" element={<AdminUsers />} />
+              <Route path="utilisateurs" element={<RequireSection section="users"><AdminUsers /></RequireSection>} />
             </Route>
-            <Route path="activite" element={<ActivityLogs />} />
-            <Route path="panier-live" element={<AdminClientAnalytics />} />
-            <Route path="chat" element={<AdminChat />} />
-            <Route path="chat-archives" element={<AdminChatArchives />} />
+            <Route path="activite" element={<RequireSection section="activity"><ActivityLogs /></RequireSection>} />
+            <Route path="panier-live" element={<RequireSection section="client_analytics"><AdminClientAnalytics /></RequireSection>} />
+            <Route path="chat" element={<RequireSection section="chat"><AdminChat /></RequireSection>} />
+            <Route path="chat-archives" element={<RequireSection section="chat_archives"><AdminChatArchives /></RequireSection>} />
             <Route element={<RequireSuperOps />}>
               <Route path="systeme" element={<SystemStatus />} />
               <Route path="files-attente" element={<QueuesStatus />} />

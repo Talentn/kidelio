@@ -62,6 +62,18 @@ module Api
           return render json: { error: "Impossible de retirer le dernier administrateur" }, status: :unprocessable_entity
         end
 
+        if params.key?(:admin_sections)
+          unless Current.user.super_admin?
+            return render json: { error: "Seul le super administrateur peut modifier les sections visibles" }, status: :forbidden
+          end
+
+          if @user.super_admin?
+            return render json: { error: "Le super administrateur a toujours accès à toutes les sections" }, status: :unprocessable_entity
+          end
+
+          @user.admin_sections = normalized_admin_sections(params[:admin_sections])
+        end
+
         attrs = user_params.except(:password)
         @user.assign_attributes(attrs)
         @user.password = user_params[:password] if user_params[:password].present?
@@ -105,6 +117,16 @@ module Api
         params.permit(:name, :phone, :role, :password)
       end
 
+      # nil / "all" resets to full access; an array restricts to the given
+      # (valid) section keys. An empty selection falls back to full access.
+      def normalized_admin_sections(raw)
+        return nil if raw.nil? || raw == "all"
+        return nil unless raw.is_a?(Array)
+
+        sections = raw.map(&:to_s) & User::ADMIN_SECTIONS
+        sections.presence
+      end
+
       def create_params
         params.permit(:name, :email, :phone, :password, :role)
       end
@@ -117,6 +139,8 @@ module Api
           phone: user.phone,
           role: user.role,
           provider: user.provider,
+          admin_sections: user.admin_sections,
+          super_admin: user.super_admin?,
           fidelity_points: user.fidelity_points,
           orders_count: user.orders.count,
           created_at: user.created_at

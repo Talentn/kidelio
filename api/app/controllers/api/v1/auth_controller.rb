@@ -51,6 +51,7 @@ module Api
           name: user.name,
           phone: user.phone,
           role: user.role,
+          admin_sections: user.staff? ? user.admin_sections : nil,
           fidelity_points: user.fidelity_points,
           wallet_balance: user.wallet_balance.to_d,
           loyalty_spend_progress: user.loyalty_spend_progress.to_d

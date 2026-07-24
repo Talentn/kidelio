@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { isSuperOps } from '../../lib/superOps'
+import { AdminSectionKey, sectionAllowed } from '../../lib/adminSections'
 import { apiAdmin } from '../../lib/api'
 import { goGet } from '../../lib/goApi'
 import { useLivePoll } from '../../hooks/useLivePoll'
@@ -138,29 +139,38 @@ export function AdminLayout() {
     navigate('/connexion')
   }
 
-  const NAV = [
+  type NavItem = {
+    to: string
+    label: string
+    icon: typeof LayoutDashboard
+    section?: AdminSectionKey
+    end?: boolean
+    badge?: number
+  }
+
+  const NAV: NavItem[] = ([
     { to: '/admin',            label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-    { to: '/admin/statistiques', label: 'Statistiques',   icon: BarChart3 },
-    { to: '/admin/produits',   label: 'Produits',         icon: Package },
-    { to: '/admin/stock',      label: 'Stock',            icon: Boxes },
-    { to: '/admin/commandes',  label: 'Commandes',        icon: ShoppingCart,   badge: stats.pending_orders },
-    { to: '/admin/avis',        label: 'Avis clients',     icon: Star },
-    { to: '/admin/categories', label: 'Catégories',       icon: Tags },
-    { to: '/admin/accueil',    label: "Page d'accueil",   icon: Layout },
-    { to: '/admin/messages',   label: 'Messages',         icon: MessageSquare,  badge: stats.unread_messages },
-    { to: '/admin/promos',     label: 'Popups promo',     icon: Megaphone },
-    { to: '/admin/codes-promo', label: 'Codes promo',     icon: Ticket },
-    ...(isAdmin ? [{ to: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users }] : []),
-    { to: '/admin/attributs',  label: 'Attributs',        icon: Ruler },
-    { to: '/admin/activite',   label: 'Activité',         icon: Activity },
-    { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle,  badge: chatWaiting },
-    { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive },
-    { to: '/admin/panier-live', label: 'Comportement clients', icon: Circle },
+    { to: '/admin/statistiques', label: 'Statistiques',   icon: BarChart3,      section: 'statistics' },
+    { to: '/admin/produits',   label: 'Produits',         icon: Package,        section: 'products' },
+    { to: '/admin/stock',      label: 'Stock',            icon: Boxes,          section: 'stock' },
+    { to: '/admin/commandes',  label: 'Commandes',        icon: ShoppingCart,   badge: stats.pending_orders, section: 'orders' },
+    { to: '/admin/avis',        label: 'Avis clients',     icon: Star,           section: 'reviews' },
+    { to: '/admin/categories', label: 'Catégories',       icon: Tags,           section: 'categories' },
+    { to: '/admin/accueil',    label: "Page d'accueil",   icon: Layout,         section: 'homepage' },
+    { to: '/admin/messages',   label: 'Messages',         icon: MessageSquare,  badge: stats.unread_messages, section: 'messages' },
+    { to: '/admin/promos',     label: 'Popups promo',     icon: Megaphone,      section: 'promos' },
+    { to: '/admin/codes-promo', label: 'Codes promo',     icon: Ticket,         section: 'promo_codes' },
+    ...(isAdmin ? [{ to: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users, section: 'users' as const }] : []),
+    { to: '/admin/attributs',  label: 'Attributs',        icon: Ruler,          section: 'attributes' },
+    { to: '/admin/activite',   label: 'Activité',         icon: Activity,       section: 'activity' },
+    { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle,  badge: chatWaiting, section: 'chat' },
+    { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive,        section: 'chat_archives' },
+    { to: '/admin/panier-live', label: 'Comportement clients', icon: Circle,     section: 'client_analytics' },
     ...(superOps ? [
       { to: '/admin/systeme', label: 'État services', icon: Server },
       { to: '/admin/files-attente', label: "Files d'attente", icon: ListTodo },
     ] : []),
-  ]
+  ] as NavItem[]).filter((item) => !item.section || sectionAllowed(user, item.section))
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_130000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -172,6 +172,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
     t.string "guest_email"
     t.string "guest_name"
     t.string "guest_phone"
+    t.integer "intigo_city_id"
+    t.integer "intigo_district_id"
+    t.text "intigo_last_error"
+    t.string "intigo_nid"
+    t.datetime "intigo_sent_at"
+    t.integer "intigo_status"
+    t.string "intigo_status_label"
+    t.datetime "intigo_synced_at"
     t.boolean "loyalty_counted", default: false, null: false
     t.text "notes"
     t.string "order_number", null: false
@@ -189,6 +197,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
     t.datetime "updated_at", null: false
     t.integer "user_id"
     t.decimal "wallet_amount", precision: 10, scale: 3, default: "0.0", null: false
+    t.index ["intigo_nid"], name: "index_orders_on_intigo_nid"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
@@ -286,6 +295,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.json "admin_sections"
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.string "encrypted_password"
