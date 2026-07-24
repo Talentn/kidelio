@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   Package,
+  PackageX,
   Star,
   Tag as TagIcon,
   ImagePlus,
@@ -14,6 +15,8 @@ import {
   Ruler,
   ChevronUp,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { apiAdmin } from "../../lib/api";
 import {
@@ -1000,6 +1003,9 @@ export function AdminProducts() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [toDelete, setToDelete] = useState<Product | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmOutOfStock, setConfirmOutOfStock] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -1081,6 +1087,44 @@ export function AdminProducts() {
       notify(err instanceof Error ? err.message : "Suppression impossible", "error");
     } finally {
       setToDelete(null);
+    }
+  };
+
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selected.has(p.id));
+  const toggleSelectAll = () =>
+    setSelected(allFilteredSelected ? new Set() : new Set(filtered.map((p) => p.id)));
+
+  const bulkAction = async (action: "activate" | "deactivate" | "out_of_stock") => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const d = await apiAdmin<{ products: Product[] }>("/products/bulk_update", {
+        method: "POST",
+        body: JSON.stringify({ ids: [...selected], bulk_action: action }),
+      });
+      const byId = new Map(d.products.map((p) => [p.id, p]));
+      setProducts((list) => list.map((p) => byId.get(p.id) ?? p));
+      const n = d.products.length;
+      notify(
+        action === "activate"
+          ? `${n} produit${n > 1 ? "s" : ""} activé${n > 1 ? "s" : ""}`
+          : action === "deactivate"
+            ? `${n} produit${n > 1 ? "s" : ""} désactivé${n > 1 ? "s" : ""}`
+            : `${n} produit${n > 1 ? "s" : ""} en rupture de stock`,
+      );
+      setSelected(new Set());
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -1226,6 +1270,46 @@ export function AdminProducts() {
         </Card>
       )}
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 bg-brand-50 border border-brand-200 rounded-2xl px-4 py-3">
+          <p className="text-sm font-bold text-slate-800 mr-2">
+            {selected.size} produit{selected.size > 1 ? "s" : ""} sélectionné{selected.size > 1 ? "s" : ""}
+          </p>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => bulkAction("activate")}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+          >
+            <Eye size={13} /> Activer
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => bulkAction("deactivate")}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-200 hover:bg-slate-300 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+          >
+            <EyeOff size={13} /> Désactiver
+          </button>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => setConfirmOutOfStock(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+          >
+            <PackageX size={13} /> Rupture de stock
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <X size={13} /> Annuler la sélection
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <Card className="overflow-hidden">
         {loading ? (
@@ -1242,6 +1326,15 @@ export function AdminProducts() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 accent-brand-500 cursor-pointer align-middle"
+                      aria-label="Tout sélectionner"
+                    />
+                  </th>
                   <th className="text-left font-bold px-4 py-3">Produit</th>
                   <th className="text-left font-bold px-4 py-3 hidden md:table-cell">Catégorie</th>
                   <th className="text-left font-bold px-4 py-3">Prix</th>
@@ -1252,7 +1345,16 @@ export function AdminProducts() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={p.id} className={`transition-colors ${selected.has(p.id) ? "bg-brand-50/60" : "hover:bg-slate-50"}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.id)}
+                        onChange={() => toggleSelected(p.id)}
+                        className="w-4 h-4 rounded border-slate-300 accent-brand-500 cursor-pointer align-middle"
+                        aria-label={`Sélectionner ${p.name}`}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -1344,6 +1446,14 @@ export function AdminProducts() {
         message={`« ${toDelete?.name} » sera définitivement supprimé. Cette action est irréversible.`}
         onConfirm={confirmDelete}
         onCancel={() => setToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmOutOfStock}
+        title="Mettre en rupture de stock ?"
+        message={`Le stock général et les stocks par taille/couleur de ${selected.size} produit${selected.size > 1 ? "s" : ""} seront mis à zéro.`}
+        onConfirm={() => { setConfirmOutOfStock(false); void bulkAction("out_of_stock"); }}
+        onCancel={() => setConfirmOutOfStock(false)}
       />
     </AdminPage>
   );

@@ -76,6 +76,9 @@ Rails.application.routes.draw do
       get "system-status", to: "system_status#show"
       get "queues-status", to: "queues_status#show"
       resources :products do
+        collection do
+          post :bulk_update
+        end
         resources :colors, only: %i[create update destroy], controller: "product_colors" do
           patch "reorder", on: :collection, action: :reorder
           delete "images/:image_id", to: "product_colors#remove_image", on: :member

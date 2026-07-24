@@ -40,6 +40,41 @@ module Api
         render json: { errors: [ uniqueness_error_message(e) ] }, status: :unprocessable_entity
       end
 
+      # Bulk actions on a selection of products.
+      # bulk_action: "activate" | "deactivate" | "out_of_stock"
+      # out_of_stock zeroes the general stock AND every color/size stock.
+      def bulk_update
+        ids = Array(params[:ids]).map(&:to_i).uniq
+        action = params[:bulk_action].to_s
+        unless %w[activate deactivate out_of_stock].include?(action)
+          return render json: { errors: [ "Action inconnue" ] }, status: :unprocessable_entity
+        end
+
+        products = Product.where(id: ids).includes(colors: :sizes)
+        if products.empty?
+          return render json: { errors: [ "Aucun produit sélectionné" ] }, status: :unprocessable_entity
+        end
+
+        Product.transaction do
+          products.each do |product|
+            case action
+            when "activate" then product.update!(active: true)
+            when "deactivate" then product.update!(active: false)
+            when "out_of_stock"
+              product.update!(stock: 0)
+              product.colors.each { |c| c.sizes.each { |s| s.update!(stock: 0) } }
+            end
+          end
+        end
+
+        invalidate_catalog_cache
+        updated = Product
+          .where(id: ids)
+          .includes(:category, images_attachments: :blob,
+                    colors: [ :sizes, { images_attachments: :blob } ])
+        render json: { products: updated.map { |p| admin_product_json(p) } }
+      end
+
       def destroy
         product = Product.find(params[:id])
         if product.destroy
