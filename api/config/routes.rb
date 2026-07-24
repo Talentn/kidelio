@@ -81,6 +81,7 @@ Rails.application.routes.draw do
         end
         resources :colors, only: %i[create update destroy], controller: "product_colors" do
           patch "reorder", on: :collection, action: :reorder
+          patch "images/reorder", to: "product_colors#reorder_images", on: :member
           delete "images/:image_id", to: "product_colors#remove_image", on: :member
           resources :sizes, only: %i[create update destroy], controller: "product_color_sizes"
         end

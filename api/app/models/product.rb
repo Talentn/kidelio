@@ -7,6 +7,13 @@ class Product < ApplicationRecord
   has_many :reviews, class_name: "ProductReview", dependent: :destroy
   has_many :colors, -> { ordered }, class_name: "ProductColor", dependent: :destroy
   has_many_attached :images
+  # Same deterministic photo ordering as ProductColor (see comment there).
+  has_many :images_attachments,
+    -> { where(name: "images").order(:id) },
+    as: :record, class_name: "ActiveStorage::Attachment",
+    inverse_of: :record, dependent: :destroy
+  has_many :images_blobs, through: :images_attachments,
+    class_name: "ActiveStorage::Blob", source: :blob
 
   # Structured spec list shown on the product page, e.g.
   # [{ "label" => "Matière", "value" => "100% Polyester" }, ...]

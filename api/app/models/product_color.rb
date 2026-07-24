@@ -5,6 +5,15 @@ class ProductColor < ApplicationRecord
   belongs_to :product
   has_many :sizes, -> { ordered }, class_name: "ProductColorSize", dependent: :destroy
   has_many_attached :images
+  # Explicit, deterministic photo order: attachment row id = display order.
+  # Reordering recreates the attachment rows (ProductColorsController#reorder_images);
+  # without ORDER BY, SQLite returns rows in index order (by blob id).
+  has_many :images_attachments,
+    -> { where(name: "images").order(:id) },
+    as: :record, class_name: "ActiveStorage::Attachment",
+    inverse_of: :record, dependent: :destroy
+  has_many :images_blobs, through: :images_attachments,
+    class_name: "ActiveStorage::Blob", source: :blob
 
   validates :name, presence: true
 

@@ -2,7 +2,7 @@ module Api
   module Admin
     class ProductColorsController < BaseController
       before_action :set_product
-      before_action :set_color, only: %i[update destroy remove_image]
+      before_action :set_color, only: %i[update destroy remove_image reorder_images]
 
       def create
         color = @product.colors.new(color_params)
@@ -36,6 +36,33 @@ module Api
         image = @color.images.find(params[:image_id])
         image.purge
         ActivityLogger.log_media(@color, attachment: :images, detail: "Image couleur supprimée")
+        invalidate_catalog_cache
+        render json: { color: color_json(@color.reload) }
+      end
+
+      # Reorder the photos of a color. Attachments have no position column and
+      # every consumer (catalog, product page, Meta feed) uses the natural row
+      # order, so we recreate the attachment rows in the requested order.
+      # The blobs (actual image files) are never touched: `delete` skips the
+      # destroy callbacks that would schedule a blob purge.
+      def reorder_images
+        order = Array(params[:order]).map(&:to_i)
+        attachments = @color.images_attachments.to_a
+        unless order.any? && order.sort == attachments.map(&:id).sort
+          return render json: { error: "Ordre invalide" }, status: :unprocessable_entity
+        end
+
+        by_id = attachments.index_by(&:id)
+        blob_ids_in_order = order.map { |id| by_id[id].blob_id }
+
+        ActiveStorage::Attachment.transaction do
+          attachments.each(&:delete)
+          blob_ids_in_order.each do |blob_id|
+            ActiveStorage::Attachment.create!(record: @color, name: "images", blob_id: blob_id)
+          end
+        end
+
+        ActivityLogger.log_media(@color, attachment: :images, detail: "Ordre des images modifié")
         invalidate_catalog_cache
         render json: { color: color_json(@color.reload) }
       end

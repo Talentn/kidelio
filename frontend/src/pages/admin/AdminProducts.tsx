@@ -15,6 +15,8 @@ import {
   Ruler,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -671,6 +673,28 @@ function ColorManager({
     } finally { setBusy(false); }
   };
 
+  const moveImage = async (colorId: number, imageId: number, direction: "left" | "right") => {
+    const color = colors.find((c) => c.id === colorId);
+    if (!color) return;
+    const ids = color.images.map((img) => img.id);
+    const idx = ids.indexOf(imageId);
+    const target = direction === "left" ? idx - 1 : idx + 1;
+    if (idx < 0 || target < 0 || target >= ids.length) return;
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+
+    setBusy(true);
+    try {
+      const d = await apiAdmin<{ color: ProductColor }>(
+        `/products/${productId}/colors/${colorId}/images/reorder`,
+        { method: "PATCH", body: JSON.stringify({ order: ids }) }
+      );
+      replaceColor(d.color);
+      notify("Ordre des photos mis à jour");
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur", "error");
+    } finally { setBusy(false); }
+  };
+
   const removeImage = async (colorId: number, imageId: number) => {
     setBusy(true);
     try {
@@ -759,6 +783,7 @@ function ColorManager({
           onDeleteColor={() => deleteColor(c.id)}
           onAddImages={(files) => addImages(c.id, files)}
           onRemoveImage={(imgId) => removeImage(c.id, imgId)}
+          onMoveImage={(imgId, dir) => moveImage(c.id, imgId, dir)}
           onAddSize={(size) => addSize(c.id, size)}
           onUpdateSizeStock={(sizeId, stock) => updateSizeStock(c.id, sizeId, stock)}
           onDeleteSize={(sizeId) => deleteSize(c.id, sizeId)}
@@ -812,7 +837,7 @@ function ColorManager({
 function ColorCard({
   color, orderIndex, orderTotal, busy, globalSizes, productStock,
   onMoveUp, onMoveDown,
-  onDeleteColor, onAddImages, onRemoveImage,
+  onDeleteColor, onAddImages, onRemoveImage, onMoveImage,
   onAddSize, onUpdateSizeStock, onDeleteSize,
 }: {
   color: ProductColor;
@@ -826,6 +851,7 @@ function ColorCard({
   onDeleteColor: () => void;
   onAddImages: (files: File[]) => void;
   onRemoveImage: (imgId: number) => void;
+  onMoveImage: (imgId: number, direction: "left" | "right") => void;
   onAddSize: (size: string) => void;
   onUpdateSizeStock: (sizeId: number, stock: number) => void;
   onDeleteSize: (sizeId: number) => void;
@@ -892,15 +918,35 @@ function ColorCard({
         {/* Images */}
         <div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Images</p>
-          <div className="flex gap-2 flex-wrap items-center">
-            {color.images.map((img) => (
+          <p className="text-[11px] text-slate-400 mb-2">La 1re photo est l'image principale (catalogue &amp; accueil).</p>
+          <div className="flex gap-2 flex-wrap items-start">
+            {color.images.map((img, imgIndex) => (
               <div key={img.id} className="relative">
                 <img src={img.url} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200" />
+                {imgIndex === 0 && (
+                  <span className="absolute -top-1.5 -left-1.5 text-[9px] font-bold bg-brand-500 text-white px-1.5 py-0.5 rounded-full shadow-sm">
+                    1re
+                  </span>
+                )}
                 <button type="button" onClick={() => onRemoveImage(img.id)} disabled={busy}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm hover:bg-red-600 transition-colors"
                   aria-label="Supprimer">
                   <X size={10} />
                 </button>
+                <div className="flex justify-center gap-1 mt-1">
+                  <button type="button" onClick={() => onMoveImage(img.id, "left")}
+                    disabled={busy || imgIndex === 0}
+                    className="w-6 h-5 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center transition-colors"
+                    aria-label="Déplacer la photo vers la gauche">
+                    <ChevronLeft size={12} />
+                  </button>
+                  <button type="button" onClick={() => onMoveImage(img.id, "right")}
+                    disabled={busy || imgIndex >= color.images.length - 1}
+                    className="w-6 h-5 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 flex items-center justify-center transition-colors"
+                    aria-label="Déplacer la photo vers la droite">
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
               </div>
             ))}
             <label className="w-14 h-14 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-colors">

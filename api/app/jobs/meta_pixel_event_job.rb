@@ -15,6 +15,8 @@ class MetaPixelEventJob < ApplicationJob
 
     when :add_to_cart
       product = Product.find(options[:product_id])
+      return unless product.active?
+
       api.track_add_to_cart(
         product:    product,
         quantity:   options[:quantity],
@@ -25,6 +27,8 @@ class MetaPixelEventJob < ApplicationJob
 
     when :view_content
       product = Product.includes(colors: :sizes).find(options[:product_id])
+      return unless product.active?
+
       api.track_view_content(product: product)
     end
   rescue ActiveRecord::RecordNotFound => e
