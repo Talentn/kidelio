@@ -1,6 +1,7 @@
 # Admin edits of an order's line items (add / change quantity / remove) with
-# stock adjustments and totals recomputation. The stored promo discount is kept
-# (clamped to the new subtotal) — it is never recalculated.
+# stock adjustments and totals recomputation. A percentage promo is re-applied
+# to the new subtotal (shipping excluded); a fixed promo keeps its stored
+# amount, clamped to the new subtotal.
 class OrderItemsEditor
   class Error < StandardError; end
 
@@ -113,13 +114,14 @@ class OrderItemsEditor
     raise Error, "Commande #{@order.status == 'delivered' ? 'livrée' : 'annulée'} — articles non modifiables"
   end
 
-  # Keeps the promo discount (clamped) and the wallet amount already debited;
-  # recomputes subtotal, shipping (free-shipping rule on the post-remise
-  # amount, like checkout) and total.
+  # Re-applies a percentage promo on the new subtotal (fixed promos keep their
+  # stored amount, clamped); keeps the wallet amount already debited; recomputes
+  # subtotal, shipping (free-shipping rule on the post-remise amount, like
+  # checkout) and total.
   def recalculate!
     items = @order.order_items.reload
     subtotal = items.sum { |i| i.unit_price.to_d * i.quantity }
-    discount = [ @order.discount_amount.to_d, subtotal ].min
+    discount = recalculated_discount(subtotal)
     wallet = @order.wallet_amount.to_d
     shipping = Order.calculate_shipping(subtotal - discount)
     total = subtotal - discount - wallet + shipping
@@ -134,5 +136,28 @@ class OrderItemsEditor
       shipping_cost: shipping,
       total: total
     )
+  end
+
+  # Percentage promos are recomputed on the items subtotal (shipping excluded),
+  # exactly like at checkout, including the max_discount cap. We intentionally
+  # skip `usable?`: the promo was valid when the order was placed, and it may
+  # have expired or been exhausted since. Fixed promos (or a promo code that no
+  # longer exists) keep the stored amount, clamped to the new subtotal.
+  def recalculated_discount(subtotal)
+    promo = find_promo
+    if promo&.percentage?
+      amount = subtotal * (promo.discount_value / 100)
+      amount = [ amount, promo.max_discount ].min if promo.max_discount.present?
+      [ amount, subtotal ].min.round(3)
+    else
+      [ @order.discount_amount.to_d, subtotal ].min
+    end
+  end
+
+  def find_promo
+    code = @order.promo_code.to_s.strip
+    return nil if code.blank?
+
+    PromoCode.find_by("LOWER(code) = ?", code.downcase)
   end
 end
