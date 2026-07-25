@@ -82,6 +82,7 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 	})
 	refreshQueue()
 	refreshQueuePositions()
+	notifyRails("chat_room", room.ID, room.UserName, "")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"room_id": room.ID})
@@ -107,6 +108,7 @@ func deliverCustomerMessage(roomID, content string) (*store.Message, error) {
 	payload := map[string]any{"type": "message", "room_id": roomID, "message": m}
 	hub.Chat.BroadcastToRoom(roomID, payload)
 	hub.Chat.BroadcastToAgents(payload)
+	notifyRails("chat_message", roomID, room.UserName, content)
 	return m, nil
 }
 

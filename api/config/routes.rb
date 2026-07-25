@@ -67,6 +67,9 @@ Rails.application.routes.draw do
       resources :contact_messages, only: [:create], path: "contact"
       get "shipping-regions/cities", to: "shipping_regions#cities"
       get "shipping-regions/cities/:city_id/districts", to: "shipping_regions#districts"
+
+      # Server-to-server events from the Go realtime service (chat push, etc.)
+      post "internal/events", to: "internal_events#create"
     end
 
     namespace :admin do
@@ -112,6 +115,15 @@ Rails.application.routes.draw do
       get "homepage", to: "homepage#show"
       patch "homepage/assets/:key", to: "homepage#update_asset"
       resources :hero_sliders, only: %i[index create update destroy], path: "hero-sliders"
+
+      # Web Push (device registration + preferences + test) — all staff
+      scope :push, controller: "push_subscriptions" do
+        get "config", action: :public_key
+        post "status", action: :status
+        post "subscribe", action: :subscribe
+        post "unsubscribe", action: :unsubscribe
+        post "test", action: :test
+      end
     end
   end
 

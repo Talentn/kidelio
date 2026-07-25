@@ -113,6 +113,12 @@ func internalSecret() string {
 	return ""
 }
 
+// RailsURL exposes the Rails API base URL for handlers (Go→Rails callouts).
+func RailsURL() string { return railsURL() }
+
+// InternalSecret exposes the Go↔Rails shared secret for handlers.
+func InternalSecret() string { return internalSecret() }
+
 // staffFromInternal trusts staff identity forwarded by Rails after session check.
 func staffFromInternal(r *http.Request) *RailsUser {
 	secret := internalSecret()

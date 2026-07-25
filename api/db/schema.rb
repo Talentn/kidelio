@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_24_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_110000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -286,6 +286,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_150000) do
     t.integer "position", default: 0, null: false
     t.string "title"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.string "auth", null: false
+    t.datetime "created_at", null: false
+    t.string "endpoint", null: false
+    t.boolean "notify_chat", default: true, null: false
+    t.boolean "notify_messages", default: true, null: false
+    t.boolean "notify_orders", default: true, null: false
+    t.string "p256dh", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id"
+    t.index ["endpoint"], name: "index_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
   end
 
   create_table "size_attributes", force: :cascade do |t|

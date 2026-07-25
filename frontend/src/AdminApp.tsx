@@ -25,6 +25,7 @@ const AdminChat         = lazy(() => import("./pages/admin/AdminChat").then((m) 
 const AdminChatArchives = lazy(() => import("./pages/admin/AdminChatArchives").then((m) => ({ default: m.AdminChatArchives })));
 const SystemStatus      = lazy(() => import("./pages/admin/SystemStatus").then((m) => ({ default: m.SystemStatus })));
 const QueuesStatus      = lazy(() => import("./pages/admin/QueuesStatus").then((m) => ({ default: m.QueuesStatus })));
+const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications").then((m) => ({ default: m.AdminNotifications })));
 
 function AdminPageLoader() {
   return (
@@ -60,6 +61,7 @@ export default function AdminApp() {
             <Route path="panier-live" element={<RequireSection section="client_analytics"><AdminClientAnalytics /></RequireSection>} />
             <Route path="chat" element={<RequireSection section="chat"><AdminChat /></RequireSection>} />
             <Route path="chat-archives" element={<RequireSection section="chat_archives"><AdminChatArchives /></RequireSection>} />
+            <Route path="notifications" element={<AdminNotifications />} />
             <Route element={<RequireSuperOps />}>
               <Route path="systeme" element={<SystemStatus />} />
               <Route path="files-attente" element={<QueuesStatus />} />

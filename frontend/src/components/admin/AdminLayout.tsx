@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Boxes, ShoppingCart,
-  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server, ListTodo, Star,
+  Tags, Activity, Store, LogOut, MessageSquare, Menu, X, Ruler, Megaphone, Users, Ticket, Layout, Circle, MessageCircle, Archive, BarChart3, Server, ListTodo, Star, Bell,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { isSuperOps } from '../../lib/superOps'
@@ -166,6 +166,7 @@ export function AdminLayout() {
     { to: '/admin/chat',          label: 'Chat Support',     icon: MessageCircle,  badge: chatWaiting, section: 'chat' },
     { to: '/admin/chat-archives', label: 'Archives chat',    icon: Archive,        section: 'chat_archives' },
     { to: '/admin/panier-live', label: 'Comportement clients', icon: Circle,     section: 'client_analytics' },
+    { to: '/admin/notifications', label: 'Notifications',    icon: Bell },
     ...(superOps ? [
       { to: '/admin/systeme', label: 'État services', icon: Server },
       { to: '/admin/files-attente', label: "Files d'attente", icon: ListTodo },

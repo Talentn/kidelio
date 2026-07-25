@@ -48,6 +48,27 @@ function normalizePlace(value: string) {
     .replace(/[^a-z0-9]+/g, '')
 }
 
+// Guest info saved after a successful order so the next checkout is prefilled.
+const CHECKOUT_INFO_KEY = 'kidelio_checkout_info'
+
+type StoredCheckoutInfo = {
+  name?: string
+  phone?: string
+  email?: string
+  governorate?: string
+  delegation?: string
+  streetAddress?: string
+}
+
+function readStoredCheckoutInfo(): StoredCheckoutInfo | null {
+  try {
+    const raw = localStorage.getItem(CHECKOUT_INFO_KEY)
+    return raw ? (JSON.parse(raw) as StoredCheckoutInfo) : null
+  } catch {
+    return null
+  }
+}
+
 export function Checkout() {
   const { items, total, count, clear, refresh } = useCart()
   const { user } = useAuth()
@@ -69,12 +90,14 @@ export function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
   const [saveAddress, setSaveAddress] = useState(true)
 
-  const [name, setName] = useState(user?.name ?? '')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [governorate, setGovernorate] = useState('')
-  const [delegation, setDelegation] = useState('')
-  const [streetAddress, setStreetAddress] = useState('')
+  const [stored] = useState(readStoredCheckoutInfo)
+
+  const [name, setName] = useState(user?.name ?? stored?.name ?? '')
+  const [phone, setPhone] = useState(stored?.phone ?? '')
+  const [email, setEmail] = useState(user?.email ?? stored?.email ?? '')
+  const [governorate, setGovernorate] = useState(stored?.governorate ?? '')
+  const [delegation, setDelegation] = useState(stored?.delegation ?? '')
+  const [streetAddress, setStreetAddress] = useState(stored?.streetAddress ?? '')
   const [intigoCityId, setIntigoCityId] = useState<number | null>(null)
   const [intigoDistrictId, setIntigoDistrictId] = useState<number | null>(null)
   const [intigoCities, setIntigoCities] = useState<IntigoCity[]>([])
@@ -388,6 +411,13 @@ export function Checkout() {
         utms: Object.keys(utms).length ? utms as Record<string, string> : undefined,
       })
       clearUtms()
+
+      try {
+        localStorage.setItem(
+          CHECKOUT_INFO_KEY,
+          JSON.stringify({ name, phone, email, governorate, delegation, streetAddress }),
+        )
+      } catch { /* storage unavailable — skip */ }
 
       clear()
       navigate(`/commande/${data.order.order_number}`)

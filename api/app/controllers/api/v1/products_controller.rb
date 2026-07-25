@@ -71,6 +71,7 @@ module Api
           effective_price: product.effective_price,
           stock: product.stock,
           in_stock: product.in_stock?,
+          has_variants: product.colors.any?,
           featured: product.featured,
           age_group: product.age_group,
           category: product.category&.slice(:id, :name, :slug),

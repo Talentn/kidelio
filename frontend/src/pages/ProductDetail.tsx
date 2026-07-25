@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { scrollWindowToTop } from '../lib/scrollToTop'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ShoppingCart, ChevronLeft, ChevronRight, Minus, Plus, Check, Heart,
-  Shirt, Truck, Banknote, ShieldCheck, PackageCheck, Frown, X, ZoomIn,
+  Shirt, Truck, Banknote, ShieldCheck, PackageCheck, Frown, X, ZoomIn, Zap,
 } from 'lucide-react'
 import { api, peekCacheV1 } from '../api/client'
 import { useCart } from '../context/CartContext'
@@ -55,6 +55,7 @@ type Product = {
 
 export function ProductDetail() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
   const productPath = slug ? `/products/${slug}` : null
   const cachedProduct = productPath ? peekCacheV1<{ product: Product }>(productPath) : null
 
@@ -63,6 +64,7 @@ export function ProductDetail() {
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [buying, setBuying] = useState(false)
   const [addError, setAddError] = useState('')
 
   const [colorId, setColorId] = useState<number | null>(null)
@@ -252,26 +254,30 @@ export function ProductDetail() {
     )
   }
 
+  const performAdd = async () => {
+    await addItem(product.id, qty, {
+      colorId: selectedColor?.id,
+      colorLabel: selectedColor?.name,
+      sizeLabel: size ?? undefined,
+    })
+    trackAddToCart({
+      productId: product.id,
+      name: product.name,
+      price: product.effective_price,
+      quantity: qty,
+      category: product.category?.name,
+      on_promo: product.on_promo,
+      colorId: selectedColor?.id,
+      sizeLabel: size ?? undefined,
+    })
+  }
+
   const handleAdd = async () => {
-    if (!canAdd) return
+    if (!canAdd || adding || buying) return
     setAdding(true)
     setAddError('')
     try {
-      await addItem(product.id, qty, {
-        colorId: selectedColor?.id,
-        colorLabel: selectedColor?.name,
-        sizeLabel: size ?? undefined,
-      })
-      trackAddToCart({
-        productId: product.id,
-        name: product.name,
-        price: product.effective_price,
-        quantity: qty,
-        category: product.category?.name,
-        on_promo: product.on_promo,
-        colorId: selectedColor?.id,
-        sizeLabel: size ?? undefined,
-      })
+      await performAdd()
       setAdded(true)
       openCart()
       setTimeout(() => setAdded(false), 2500)
@@ -279,6 +285,20 @@ export function ProductDetail() {
       setAddError(err instanceof Error ? err.message : 'Impossible d\'ajouter au panier.')
     } finally {
       setAdding(false)
+    }
+  }
+
+  // Buy now: add to cart then jump straight to checkout (skips the cart drawer).
+  const handleBuyNow = async () => {
+    if (!canAdd || adding || buying) return
+    setBuying(true)
+    setAddError('')
+    try {
+      await performAdd()
+      navigate('/checkout')
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : 'Impossible d\'ajouter au panier.')
+      setBuying(false)
     }
   }
 
@@ -614,22 +634,37 @@ export function ProductDetail() {
                 <p className="text-sm text-red-600 font-medium mb-3">{addError}</p>
               )}
 
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={adding}
-                className={`btn-primary btn-lg w-full justify-center transition-all md:w-auto ${
-                  added ? 'bg-sage-500 hover:bg-sage-600' : ''
-                }`}
-              >
-                {added ? (
-                  <><Check size={20} /> Ajouté au panier</>
-                ) : adding ? (
-                  <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Ajout...</>
-                ) : (
-                  <><ShoppingCart size={20} /> Ajouter au panier</>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={adding || buying}
+                  className="btn-primary btn-lg flex-1 justify-center transition-all"
+                >
+                  {buying ? (
+                    <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Un instant...</>
+                  ) : (
+                    <><Zap size={20} /> Commander maintenant</>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={adding || buying}
+                  className={`btn-ghost btn-lg flex-1 justify-center transition-all font-bold ${
+                    added ? 'border-sage-500 bg-sage-500 text-white hover:bg-sage-600' : 'border-2 border-gray-300'
+                  }`}
+                >
+                  {added ? (
+                    <><Check size={20} /> Ajouté au panier</>
+                  ) : adding ? (
+                    <><span className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> Ajout...</>
+                  ) : (
+                    <><ShoppingCart size={20} /> Ajouter au panier</>
+                  )}
+                </button>
+              </div>
             </>
           )}
 
