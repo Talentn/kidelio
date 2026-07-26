@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { apiAdmin } from '../../lib/api'
 import { AdminPage, Card } from '../../components/admin/ui'
+import { HourlyBarChart, DailyActivityChart } from '../../components/admin/charts'
 import { formatAdminDate, formatAdminDateTime, formatAdminRelative, formatPctChange } from '../../lib/adminDatetime'
 import { formatDurationMs } from '../../lib/userTracking'
 import { useLivePoll } from '../../hooks/useLivePoll'
@@ -161,15 +162,13 @@ export function AdminClientAnalytics() {
   useEffect(() => { load() }, [load])
   useLivePoll(() => load(true), [load], { interval: import.meta.env.PROD ? 30_000 : 15_000 })
 
-  const maxHour = useMemo(
-    () => Math.max(1, ...(data?.activity_by_hour.map((h) => h.events) ?? [1])),
-    [data],
-  )
-
-  const maxDayCart = useMemo(
-    () => Math.max(1, ...(data?.activity_by_day.map((d) => d.cart_adds) ?? [1])),
-    [data],
-  )
+  const checkoutChange = useMemo(() => {
+    if (!data) return null
+    const prev = data.previous_period.checkouts
+    const current = data.kpis.checkouts
+    if (!prev) return prev === current ? null : 100
+    return Math.round(((current - prev) / prev) * 1000) / 10
+  }, [data])
 
   if (loading && !data) {
     return (
@@ -219,7 +218,7 @@ export function AdminClientAnalytics() {
             <KpiCard icon={Users} label="Sessions uniques" value={k.sessions} change={prev?.change_sessions_pct} accent="bg-blue-50 text-blue-600" />
             <KpiCard icon={Eye} label="Vues produit" value={k.product_views} change={prev?.change_product_views_pct} accent="bg-indigo-50 text-indigo-600" />
             <KpiCard icon={ShoppingCart} label="Ajouts panier" value={k.cart_adds} change={prev?.change_cart_adds_pct} accent="bg-emerald-50 text-emerald-600" sub={`${k.cart_removals} retrait(s)`} />
-            <KpiCard icon={CreditCard} label="Checkouts" value={k.checkouts} accent="bg-orange-50 text-orange-600" sub={`Conversion ${k.conversion_cart_to_checkout_pct}%`} />
+            <KpiCard icon={CreditCard} label="Checkouts" value={k.checkouts} change={checkoutChange} accent="bg-orange-50 text-orange-600" sub={`Conversion ${k.conversion_cart_to_checkout_pct}%`} />
           </div>
 
           {/* Secondary metrics — compact strip, not a wall of cards */}
@@ -234,38 +233,13 @@ export function AdminClientAnalytics() {
             {/* Activity by hour */}
             <Card className="p-5">
               <h3 className="font-bold text-slate-800 text-sm mb-4">Activité par heure (Tunisie)</h3>
-              <div className="flex items-end gap-1 h-32">
-                {data.activity_by_hour.map((h) => (
-                  <div key={h.hour} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <div
-                      className="w-full bg-brand-400 rounded-t-sm min-h-[2px] transition-all"
-                      style={{ height: `${Math.max(4, (h.events / maxHour) * 100)}%` }}
-                      title={`${h.events} événements`}
-                    />
-                    {h.hour % 3 === 0 && <span className="text-[9px] text-slate-400">{h.label}</span>}
-                  </div>
-                ))}
-              </div>
+              <HourlyBarChart data={data.activity_by_hour} />
             </Card>
 
             {/* Activity by day */}
             <Card className="p-5">
-              <h3 className="font-bold text-slate-800 text-sm mb-4">Ajouts panier / jour</h3>
-              <div className="space-y-2 max-h-36 overflow-y-auto">
-                {data.activity_by_day.filter((d) => d.cart_adds > 0 || d.product_views > 0).slice(-14).map((d) => (
-                  <div key={d.date} className="flex items-center gap-3 text-xs">
-                    <span className="w-16 text-slate-500 flex-shrink-0">{formatAdminDate(d.date)}</span>
-                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(d.cart_adds / maxDayCart) * 100}%` }} />
-                    </div>
-                    <span className="w-8 text-right font-bold text-slate-700">{d.cart_adds}</span>
-                    <span className="w-12 text-right text-slate-400">{d.sessions} sess.</span>
-                  </div>
-                ))}
-                {data.activity_by_day.every((d) => d.cart_adds === 0) && (
-                  <p className="text-slate-400 text-sm">Aucune donnée sur cette période.</p>
-                )}
-              </div>
+              <h3 className="font-bold text-slate-800 text-sm mb-4">Ajouts panier & sessions / jour</h3>
+              <DailyActivityChart data={data.activity_by_day} />
             </Card>
           </div>
 

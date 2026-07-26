@@ -17,6 +17,13 @@ import {
 import { apiAdmin } from "../../lib/api";
 import { orderStatusLabel } from "../../lib/orderStatus";
 import { AdminPage, Card } from "../../components/admin/ui";
+import {
+  TimeSeriesAreaChart,
+  TimeSeriesBarChart,
+  CHART_COLORS,
+  formatTND,
+  formatCount,
+} from "../../components/admin/charts";
 
 const PERIODS = [
   { value: "today", label: "Aujourd'hui" },
@@ -97,10 +104,6 @@ type Statistics = {
   }[];
 };
 
-function formatTND(value: number) {
-  return `${value.toFixed(3)} TND`;
-}
-
 function formatDate(dateStr: string) {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -130,12 +133,14 @@ function SummaryCard({
   icon,
   accent,
   change,
+  sub,
 }: {
   label: string;
   value: string | number;
   icon: React.ReactNode;
   accent: string;
   change?: number | null;
+  sub?: string;
 }) {
   return (
     <Card className="p-5">
@@ -143,9 +148,10 @@ function SummaryCard({
         <div className="min-w-0">
           <p className="text-slate-500 text-sm font-semibold">{label}</p>
           <p className="text-2xl font-bold text-slate-900 mt-1 truncate">{value}</p>
-          {change !== undefined && (
-            <div className="mt-1.5">
-              <ChangeBadge value={change} />
+          {(change !== undefined || sub) && (
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              {change !== undefined && <ChangeBadge value={change} />}
+              {sub && <span className="text-[11px] text-slate-400">{sub}</span>}
             </div>
           )}
         </div>
@@ -154,93 +160,6 @@ function SummaryCard({
         </div>
       </div>
     </Card>
-  );
-}
-
-function DayBarChart({
-  data,
-  valueKey,
-  formatValue,
-}: {
-  data: { date: string; [key: string]: string | number }[];
-  valueKey: string;
-  formatValue?: (v: number) => string;
-}) {
-  const max = useMemo(
-    () => Math.max(...data.map((d) => Number(d[valueKey])), 1),
-    [data, valueKey],
-  );
-
-  if (!data.length) {
-    return <p className="text-slate-400 text-sm text-center py-8">Aucune donnée pour cette période.</p>;
-  }
-
-  const showEvery = data.length > 14 ? Math.ceil(data.length / 7) : 1;
-
-  return (
-    <div className="flex items-end gap-1 h-48 pt-4">
-      {data.map((d, i) => {
-        const val = Number(d[valueKey]);
-        const height = Math.max((val / max) * 100, val > 0 ? 4 : 0);
-        return (
-          <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
-            <div
-              className="w-full bg-amber-400 rounded-t-md transition-all hover:bg-amber-500 min-h-[2px]"
-              style={{ height: `${height}%` }}
-              title={`${formatDate(d.date)}: ${formatValue ? formatValue(val) : val}`}
-            />
-            {i % showEvery === 0 && (
-              <span className="text-[9px] text-slate-400 truncate w-full text-center leading-none">
-                {formatDate(d.date)}
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function BarChart({
-  data,
-  valueKey,
-  labelKey,
-  formatValue,
-}: {
-  data: { date: string; orders: number; revenue: number }[];
-  valueKey: "orders" | "revenue";
-  labelKey?: string;
-  formatValue?: (v: number) => string;
-}) {
-  const max = useMemo(() => Math.max(...data.map((d) => d[valueKey]), 1), [data, valueKey]);
-
-  if (!data.length) {
-    return <p className="text-slate-400 text-sm text-center py-8">Aucune donnée pour cette période.</p>;
-  }
-
-  const showEvery = data.length > 14 ? Math.ceil(data.length / 7) : 1;
-
-  return (
-    <div className="flex items-end gap-1 h-48 pt-4">
-      {data.map((d, i) => {
-        const val = d[valueKey];
-        const height = Math.max((val / max) * 100, val > 0 ? 4 : 0);
-        return (
-          <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0 group relative">
-            <div
-              className="w-full bg-brand-500 rounded-t-md transition-all hover:bg-brand-600 min-h-[2px]"
-              style={{ height: `${height}%` }}
-              title={`${labelKey ? d.date : formatDate(d.date)}: ${formatValue ? formatValue(val) : val}`}
-            />
-            {i % showEvery === 0 && (
-              <span className="text-[9px] text-slate-400 truncate w-full text-center leading-none">
-                {formatDate(d.date)}
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -319,6 +238,16 @@ export function Statistics() {
   );
 
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? period;
+  const granularity = period === "all" ? "month" : "day";
+
+  const aovChange = useMemo(() => {
+    if (!data) return null;
+    const prev = data.previous_period;
+    if (!prev.orders_count) return null;
+    const prevAov = prev.revenue / prev.orders_count;
+    if (prevAov <= 0) return null;
+    return Math.round(((data.summary.average_order_value - prevAov) / prevAov) * 1000) / 10;
+  }, [data]);
 
   return (
     <AdminPage
@@ -368,10 +297,11 @@ export function Statistics() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
               label="Commandes"
-              value={data.summary.orders_count}
+              value={formatCount(data.summary.orders_count)}
               icon={<ShoppingCart size={18} className="text-white" />}
               accent="bg-brand-500"
               change={data.previous_period.change_orders_pct}
+              sub={data.from ? `vs ${formatCount(data.previous_period.orders_count)} avant` : undefined}
             />
             <SummaryCard
               label="Chiffre d'affaires"
@@ -379,22 +309,24 @@ export function Statistics() {
               icon={<Banknote size={18} className="text-white" />}
               accent="bg-emerald-500"
               change={data.previous_period.change_revenue_pct}
+              sub={data.from ? `vs ${formatTND(data.previous_period.revenue)}` : undefined}
             />
             <SummaryCard
               label="Panier moyen"
               value={formatTND(data.summary.average_order_value)}
               icon={<TrendingUp size={18} className="text-white" />}
               accent="bg-indigo-500"
+              change={aovChange}
             />
             <SummaryCard
               label="Articles vendus"
-              value={data.summary.items_sold}
+              value={formatCount(data.summary.items_sold)}
               icon={<Package size={18} className="text-white" />}
               accent="bg-violet-500"
             />
             <SummaryCard
               label="Nouveaux clients"
-              value={data.summary.new_customers}
+              value={formatCount(data.summary.new_customers)}
               icon={<Users size={18} className="text-white" />}
               accent="bg-sky-500"
             />
@@ -432,23 +364,36 @@ export function Statistics() {
           </div>
 
           {/* Revenue chart */}
-          {data.revenue_by_day.length > 0 && (
-            <Card className="p-5">
-              <h2 className="font-bold text-slate-900 mb-1">Évolution du chiffre d'affaires</h2>
-              <p className="text-sm text-slate-500 mb-4">Revenus par jour (hors annulations et remboursements)</p>
-              <BarChart data={data.revenue_by_day} valueKey="revenue" formatValue={formatTND} />
-            </Card>
-          )}
+          <Card className="p-5">
+            <h2 className="font-bold text-slate-900 mb-1">Évolution du chiffre d'affaires</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Revenus par {granularity === "month" ? "mois" : "jour"} (hors annulations et remboursements)
+            </p>
+            <TimeSeriesAreaChart
+              data={data.revenue_by_day}
+              dataKey="revenue"
+              name="Chiffre d'affaires"
+              color={CHART_COLORS.emerald}
+              granularity={granularity}
+              valueFormatter={formatTND}
+            />
+          </Card>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Orders chart */}
-            {data.revenue_by_day.length > 0 && (
-              <Card className="p-5">
-                <h2 className="font-bold text-slate-900 mb-1">Commandes par jour</h2>
-                <p className="text-sm text-slate-500 mb-4">Nombre de commandes validées</p>
-                <BarChart data={data.revenue_by_day} valueKey="orders" />
-              </Card>
-            )}
+            <Card className="p-5">
+              <h2 className="font-bold text-slate-900 mb-1">
+                Commandes par {granularity === "month" ? "mois" : "jour"}
+              </h2>
+              <p className="text-sm text-slate-500 mb-4">Nombre de commandes validées</p>
+              <TimeSeriesBarChart
+                data={data.revenue_by_day}
+                dataKey="orders"
+                name="Commandes"
+                color={CHART_COLORS.brand}
+                granularity={granularity}
+              />
+            </Card>
 
             {/* Status breakdown */}
             <Card className="p-5">
@@ -464,9 +409,17 @@ export function Statistics() {
           <div className="grid lg:grid-cols-2 gap-6">
             {data.reviews_by_day.some((d) => d.reviews > 0) && (
               <Card className="p-5">
-                <h2 className="font-bold text-slate-900 mb-1">Avis par jour</h2>
+                <h2 className="font-bold text-slate-900 mb-1">
+                  Avis par {granularity === "month" ? "mois" : "jour"}
+                </h2>
                 <p className="text-sm text-slate-500 mb-4">Nouvelles notes sur la période</p>
-                <DayBarChart data={data.reviews_by_day} valueKey="reviews" />
+                <TimeSeriesBarChart
+                  data={data.reviews_by_day}
+                  dataKey="reviews"
+                  name="Avis"
+                  color={CHART_COLORS.amber}
+                  granularity={granularity}
+                />
               </Card>
             )}
 
