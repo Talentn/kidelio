@@ -11,8 +11,18 @@ module Api
       }.freeze
 
       def show
-        period = PERIODS.key?(params[:period]) ? params[:period] : "30d"
-        from, to = PERIODS[period].call
+        custom_from = parse_date(params[:from])
+        custom_to = parse_date(params[:to])
+
+        if custom_from && custom_to
+          custom_from, custom_to = custom_to, custom_from if custom_from > custom_to
+          period = "custom"
+          from = custom_from.beginning_of_day
+          to = custom_to.end_of_day
+        else
+          period = PERIODS.key?(params[:period]) ? params[:period] : "30d"
+          from, to = PERIODS[period].call
+        end
         duration = from ? (to - from) : nil
         prev_to = from ? from - 1.second : nil
         prev_from = duration ? prev_to - duration : nil
@@ -82,6 +92,13 @@ module Api
       end
 
       private
+
+      def parse_date(value)
+        return nil if value.blank?
+        Date.iso8601(value.to_s)
+      rescue ArgumentError
+        nil
+      end
 
       def scoped_orders(from, to)
         scope = Order.all

@@ -6,6 +6,13 @@ module Api
         scope = scope.where(entity_type: params[:entity_type]) if params[:entity_type].present?
         # Use :event — :action is always "index" (Rails route action name)
         scope = scope.where(action: params[:event]) if params[:event].present?
+
+        from_date = parse_date(params[:from])
+        to_date = parse_date(params[:to])
+        from_date, to_date = to_date, from_date if from_date && to_date && from_date > to_date
+        scope = scope.where("created_at >= ?", from_date.beginning_of_day) if from_date
+        scope = scope.where("created_at <= ?", to_date.end_of_day) if to_date
+
         scope = scope.limit(params.fetch(:limit, 500).to_i.clamp(1, 1000))
 
         render json: {
@@ -24,6 +31,15 @@ module Api
             }
           end
         }
+      end
+
+      private
+
+      def parse_date(value)
+        return nil if value.blank?
+        Date.iso8601(value.to_s)
+      rescue ArgumentError
+        nil
       end
     end
   end

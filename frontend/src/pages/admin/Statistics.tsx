@@ -35,6 +35,12 @@ const PERIODS = [
 ] as const;
 
 type Period = (typeof PERIODS)[number]["value"];
+type PeriodMode = Period | "day" | "range";
+
+/** Today's date (YYYY-MM-DD) in the shop's timezone. */
+function todayISO(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Tunis" });
+}
 
 type Statistics = {
   period: string;
@@ -205,17 +211,30 @@ function HorizontalBars({
 }
 
 export function Statistics() {
-  const [period, setPeriod] = useState<Period>("30d");
+  const [period, setPeriod] = useState<PeriodMode>("30d");
+  const [day, setDay] = useState(() => todayISO());
+  const [rangeFrom, setRangeFrom] = useState(() => todayISO());
+  const [rangeTo, setRangeTo] = useState(() => todayISO());
   const [data, setData] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(() => {
+    let query: string;
+    if (period === "day") {
+      if (!day) return;
+      query = `from=${day}&to=${day}`;
+    } else if (period === "range") {
+      if (!rangeFrom || !rangeTo) return;
+      query = `from=${rangeFrom}&to=${rangeTo}`;
+    } else {
+      query = `period=${period}`;
+    }
     setLoading(true);
-    apiAdmin<Statistics>(`/statistics?period=${period}`)
+    apiAdmin<Statistics>(`/statistics?${query}`)
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, day, rangeFrom, rangeTo]);
 
   useEffect(() => {
     refresh();
@@ -237,7 +256,12 @@ export function Statistics() {
     [data]
   );
 
-  const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? period;
+  const periodLabel =
+    period === "day"
+      ? "Jour"
+      : period === "range"
+        ? "Période personnalisée"
+        : (PERIODS.find((p) => p.value === period)?.label ?? period);
   const granularity = period === "all" ? "month" : "day";
 
   const aovChange = useMemo(() => {
@@ -254,21 +278,75 @@ export function Statistics() {
       title="Statistiques"
       subtitle="Analyse détaillée de votre boutique"
       actions={
-        <div className="flex flex-wrap gap-1.5">
-          {PERIODS.map((p) => (
+        <div className="flex flex-col items-start lg:items-end gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {PERIODS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setPeriod(p.value)}
+                className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+                  period === p.value
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
             <button
-              key={p.value}
               type="button"
-              onClick={() => setPeriod(p.value)}
+              onClick={() => setPeriod("day")}
               className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
-                period === p.value
+                period === "day"
                   ? "bg-brand-500 text-white shadow-sm"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {p.label}
+              Jour
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setPeriod("range")}
+              className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+                period === "range"
+                  ? "bg-brand-500 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Période
+            </button>
+          </div>
+          {period === "day" && (
+            <input
+              type="date"
+              value={day}
+              max={todayISO()}
+              onChange={(e) => setDay(e.target.value)}
+              className="input py-1.5 text-sm w-auto"
+            />
+          )}
+          {period === "range" && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <span className="font-semibold">Du</span>
+              <input
+                type="date"
+                value={rangeFrom}
+                max={rangeTo || todayISO()}
+                onChange={(e) => setRangeFrom(e.target.value)}
+                className="input py-1.5 text-sm w-auto"
+              />
+              <span className="font-semibold">au</span>
+              <input
+                type="date"
+                value={rangeTo}
+                min={rangeFrom || undefined}
+                max={todayISO()}
+                onChange={(e) => setRangeTo(e.target.value)}
+                className="input py-1.5 text-sm w-auto"
+              />
+            </div>
+          )}
         </div>
       }
     >

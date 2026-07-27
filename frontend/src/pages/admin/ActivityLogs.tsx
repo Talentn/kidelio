@@ -38,6 +38,11 @@ const ACTION_ICON_STYLES: Record<string, string> = {
   LOGOUT: "bg-slate-100 text-slate-500",
 };
 
+/** Today's date (YYYY-MM-DD) in the shop's timezone. */
+function todayISO(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Tunis" });
+}
+
 /** Human day bucket label: "Aujourd'hui", "Hier" or a full date. */
 function dayLabel(iso: string): string {
   const d = new Date(iso);
@@ -256,12 +261,23 @@ export function ActivityLogs() {
   const [roleFilter, setRoleFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
+  const [dateMode, setDateMode] = useState<"" | "day" | "range">("");
+  const [day, setDay] = useState(() => todayISO());
+  const [rangeFrom, setRangeFrom] = useState(() => todayISO());
+  const [rangeTo, setRangeTo] = useState(() => todayISO());
 
   const load = useCallback((silent = false) => {
     if (!silent) setRefreshing(true);
     const qs = new URLSearchParams({ limit: "500" });
     if (entityFilter) qs.set("entity_type", entityFilter);
     if (actionFilter) qs.set("event", actionFilter);
+    if (dateMode === "day" && day) {
+      qs.set("from", day);
+      qs.set("to", day);
+    } else if (dateMode === "range") {
+      if (rangeFrom) qs.set("from", rangeFrom);
+      if (rangeTo) qs.set("to", rangeTo);
+    }
 
     return apiAdmin<{ logs: Log[] }>(`/activity-logs?${qs}`)
       .then((d) => {
@@ -270,7 +286,7 @@ export function ActivityLogs() {
       })
       .catch(() => setLoading(false))
       .finally(() => setRefreshing(false));
-  }, [entityFilter, actionFilter]);
+  }, [entityFilter, actionFilter, dateMode, day, rangeFrom, rangeTo]);
 
   useEffect(() => {
     load();
@@ -383,6 +399,44 @@ export function ActivityLogs() {
             </option>
           ))}
         </select>
+        <select
+          value={dateMode}
+          onChange={(e) => setDateMode(e.target.value as "" | "day" | "range")}
+          className="input py-2 w-full lg:w-auto text-sm"
+        >
+          <option value="">Toutes les dates</option>
+          <option value="day">Par jour</option>
+          <option value="range">Par période</option>
+        </select>
+        {dateMode === "day" && (
+          <input
+            type="date"
+            value={day}
+            max={todayISO()}
+            onChange={(e) => setDay(e.target.value)}
+            className="input py-2 w-full lg:w-auto text-sm"
+          />
+        )}
+        {dateMode === "range" && (
+          <div className="flex items-center gap-2 w-full lg:w-auto">
+            <input
+              type="date"
+              value={rangeFrom}
+              max={rangeTo || todayISO()}
+              onChange={(e) => setRangeFrom(e.target.value)}
+              className="input py-2 w-full lg:w-auto text-sm"
+            />
+            <span className="text-sm text-slate-500 flex-shrink-0">au</span>
+            <input
+              type="date"
+              value={rangeTo}
+              min={rangeFrom || undefined}
+              max={todayISO()}
+              onChange={(e) => setRangeTo(e.target.value)}
+              className="input py-2 w-full lg:w-auto text-sm"
+            />
+          </div>
+        )}
       </div>
 
       {!loading && logs.length > 0 && (
