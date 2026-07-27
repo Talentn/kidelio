@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_110000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -174,6 +174,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_110000) do
     t.string "guest_phone"
     t.boolean "intigo_can_open", default: true, null: false
     t.integer "intigo_city_id"
+    t.integer "intigo_delivery_attempts"
     t.integer "intigo_district_id"
     t.boolean "intigo_is_exchange", default: false, null: false
     t.text "intigo_last_error"

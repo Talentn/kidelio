@@ -41,6 +41,12 @@ class IntigoClient
     get("/parcels/#{nid}").fetch("parcel", {})
   end
 
+  # Full parcel timeline → [{ "type", "timestamp", "data" }]. Event types:
+  # status_change, delivery_attempt, scan, address_change, phone_change, partner_action.
+  def parcel_history(nid)
+    get("/parcels/#{nid}/history").fetch("history", [])
+  end
+
   # Bulk status for up to 200 NIDs → [{ "nid", "found", "status", "status_label" }]
   def parcels_status(nids)
     post("/parcels/status", { nids: Array(nids) }).fetch("parcels", [])

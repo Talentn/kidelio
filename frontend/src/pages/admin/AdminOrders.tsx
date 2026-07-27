@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Eye, ShoppingCart, Phone, PhoneCall, MapPin, User as UserIcon, Trash2, ImageOff, RefreshCw, Truck, Pencil, X, Check, Plus, Minus, Printer } from "lucide-react";
+import { Search, Eye, ShoppingCart, Phone, PhoneCall, MapPin, User as UserIcon, Trash2, ImageOff, RefreshCw, Truck, Pencil, X, Check, Plus, Minus, Printer, History } from "lucide-react";
 import { apiAdmin, apiV1 } from "../../lib/api";
 import { ORDER_STATUSES, orderStatusLabel, orderStatusSelectClass, paymentMethodLabel } from "../../lib/orderStatus";
 import { useLivePoll } from "../../hooks/useLivePoll";
@@ -55,6 +55,7 @@ type Order = {
   intigo_status?: number | null;
   intigo_status_label?: string | null;
   intigo_synced_at?: string | null;
+  intigo_delivery_attempts?: number | null;
   intigo_can_open?: boolean;
   intigo_is_exchange?: boolean;
   intigo_city_id?: number | null;
@@ -65,6 +66,73 @@ type Order = {
 
 type IntigoCity = { id: number; name: string };
 type IntigoDistrict = { id: number; name: string; city_id?: number };
+
+type IntigoHistoryEntry = {
+  type: string;
+  timestamp: string;
+  data?: Record<string, unknown>;
+};
+
+const INTIGO_EVENT_LABELS: Record<string, string> = {
+  status_change: "Changement de statut",
+  delivery_attempt: "Tentative de contact client",
+  scan: "Scan du colis",
+  address_change: "Changement d'adresse",
+  phone_change: "Changement de téléphone",
+  partner_action: "Action partenaire",
+};
+
+const INTIGO_DATA_LABELS: Record<string, string> = {
+  status: "Statut",
+  status_label: "Statut",
+  status_code: "Code",
+  reason: "Motif",
+  result: "Résultat",
+  outcome: "Résultat",
+  phone: "Téléphone",
+  note: "Note",
+  notes: "Notes",
+  message: "Message",
+  agent: "Agent",
+  driver: "Livreur",
+  attempt: "N° tentative",
+  attempt_number: "N° tentative",
+  channel: "Canal",
+};
+
+const INTIGO_EVENT_STYLES: Record<string, string> = {
+  status_change: "bg-blue-100 text-blue-600",
+  delivery_attempt: "bg-amber-100 text-amber-700",
+  scan: "bg-slate-100 text-slate-500",
+  address_change: "bg-violet-100 text-violet-600",
+  phone_change: "bg-violet-100 text-violet-600",
+  partner_action: "bg-slate-100 text-slate-500",
+};
+
+/** Flattens the free-form event data into a readable "clé : valeur" line. */
+function intigoEventDetails(data?: Record<string, unknown>): string {
+  if (!data) return "";
+  return Object.entries(data)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([k, v]) => {
+      const label = INTIGO_DATA_LABELS[k] ?? k.replace(/_/g, " ");
+      return `${label} : ${typeof v === "object" ? JSON.stringify(v) : String(v)}`;
+    })
+    .join(" · ");
+}
+
+function isContactAttemptEvent(event: IntigoHistoryEntry): boolean {
+  if (event.type === "delivery_attempt") return true;
+  // Relance / IVR callbacks sometimes arrive as partner_action.
+  const blob = JSON.stringify(event.data ?? {}).toLowerCase();
+  return event.type === "partner_action" && /relance|appel|call|ivr|contact|tentative/.test(blob);
+}
+
+/** tel: link for a stored phone; 8-digit local numbers get Tunisia's +216 prefix. */
+function telHref(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return /^\d{8}$/.test(digits) ? `tel:+216${digits}` : `tel:${digits}`;
+}
 
 function normalizePlace(value: string) {
   return value
@@ -469,10 +537,34 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
   const [editingShipping, setEditingShipping] = useState(false);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [itemBusy, setItemBusy] = useState<number | "add" | null>(null);
+  const [intigoHistory, setIntigoHistory] = useState<IntigoHistoryEntry[] | null>(null);
+  const [showIntigoHistory, setShowIntigoHistory] = useState(false);
+  const [loadingIntigoHistory, setLoadingIntigoHistory] = useState(false);
 
   useEffect(() => {
+    setIntigoHistory(null);
+    setShowIntigoHistory(false);
     apiAdmin<{ order: Order }>(`/orders/${id}`).then((d) => setOrder(d.order)).catch(() => {});
   }, [id]);
+
+  const toggleIntigoHistory = async () => {
+    if (showIntigoHistory) {
+      setShowIntigoHistory(false);
+      return;
+    }
+    setShowIntigoHistory(true);
+    if (intigoHistory) return;
+    setLoadingIntigoHistory(true);
+    try {
+      const data = await apiAdmin<{ history: IntigoHistoryEntry[] }>(`/orders/${id}/intigo_history`);
+      setIntigoHistory(data.history ?? []);
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : "Erreur Intigo", "error");
+      setShowIntigoHistory(false);
+    } finally {
+      setLoadingIntigoHistory(false);
+    }
+  };
 
   const updateStatus = async (status: string) => {
     setUpdating(true);
@@ -701,7 +793,15 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
             <div className="bg-slate-50 rounded-xl p-4">
               <h3 className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-3"><UserIcon size={15} /> Client</h3>
               <p className="text-sm text-slate-700 font-semibold">{order.guest_name ?? order.user?.name ?? "—"}</p>
-              {order.guest_phone && <p className="flex items-center gap-1.5 text-sm text-slate-500 mt-1"><Phone size={13} /> {order.guest_phone}</p>}
+              {order.guest_phone && (
+                <a
+                  href={telHref(order.guest_phone)}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 hover:underline mt-1"
+                  title="Appeler le client"
+                >
+                  <Phone size={13} /> {order.guest_phone}
+                </a>
+              )}
               {(order.guest_email || order.user?.email) && <p className="text-sm text-slate-500 mt-1">{order.guest_email ?? order.user?.email}</p>}
             </div>
             <div className={`bg-slate-50 rounded-xl p-4 ${editingShipping ? "sm:col-span-2" : ""}`}>
@@ -767,6 +867,17 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                         Synchronisé : {new Date(order.intigo_synced_at).toLocaleString("fr-FR")}
                       </p>
                     )}
+                    {order.intigo_delivery_attempts != null && (
+                      <p
+                        className={`flex items-center gap-1.5 text-xs font-semibold mt-1 ${
+                          order.intigo_delivery_attempts > 0 ? "text-amber-700" : "text-slate-400"
+                        }`}
+                      >
+                        <PhoneCall size={12} />
+                        {order.intigo_delivery_attempts} tentative{order.intigo_delivery_attempts > 1 ? "s" : ""} de contact client
+                        <span className="font-medium text-slate-400">(max 5)</span>
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-amber-700 font-medium">Pas encore créé sur Intigo</p>
@@ -806,6 +917,21 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                   >
                     <RefreshCw size={15} className={syncingIntigo ? "animate-spin" : ""} />
                     {syncingIntigo ? "Sync..." : "Synchroniser"}
+                  </button>
+                )}
+                {order.intigo_nid && (
+                  <button
+                    type="button"
+                    onClick={toggleIntigoHistory}
+                    disabled={loadingIntigoHistory}
+                    className={`inline-flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-xl transition-colors disabled:opacity-50 ${
+                      showIntigoHistory
+                        ? "text-brand-700 bg-brand-50 border border-brand-200"
+                        : "text-slate-700 bg-white border border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <History size={15} />
+                    {loadingIntigoHistory ? "Chargement..." : "Historique"}
                   </button>
                 )}
                 {order.intigo_status === INTIGO_RELANCE_STATUS && (
@@ -867,6 +993,71 @@ function OrderDetail({ id, onClose, onStatusChange, onDeleted, onOrderPatched }:
                 </span>
               )}
             </div>
+
+            {/* Intigo parcel timeline (statuts, tentatives de contact client, scans…) */}
+            {showIntigoHistory && (
+              <div className="mt-3 pt-3 border-t border-slate-200/70">
+                <h4 className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-2">
+                  <History size={14} /> Historique du colis
+                  {(() => {
+                    const contactCount = (intigoHistory ?? []).filter(isContactAttemptEvent).length;
+                    if (contactCount === 0) return null;
+                    return (
+                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                        {contactCount} contact{contactCount > 1 ? "s" : ""} client
+                      </span>
+                    );
+                  })()}
+                </h4>
+                {loadingIntigoHistory ? (
+                  <div className="space-y-2">
+                    {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-10 rounded-lg" />)}
+                  </div>
+                ) : !intigoHistory || intigoHistory.length === 0 ? (
+                  <p className="text-sm text-slate-400">Aucun événement pour ce colis.</p>
+                ) : (
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {intigoHistory.map((event, i) => {
+                      const details = intigoEventDetails(event.data);
+                      const isAttempt = isContactAttemptEvent(event);
+                      return (
+                        <div
+                          key={`${event.timestamp}-${i}`}
+                          className={`flex items-start gap-2.5 rounded-lg px-3 py-2 ${
+                            isAttempt ? "bg-amber-50/70 border border-amber-100" : "bg-white border border-slate-100"
+                          }`}
+                        >
+                          <span
+                            className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                              isAttempt
+                                ? INTIGO_EVENT_STYLES.delivery_attempt
+                                : (INTIGO_EVENT_STYLES[event.type] ?? "bg-slate-100 text-slate-500")
+                            }`}
+                          >
+                            {isAttempt ? <PhoneCall size={13} /> : <Truck size={13} />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-slate-800">
+                                {isAttempt && event.type !== "delivery_attempt"
+                                  ? "Tentative de contact client"
+                                  : (INTIGO_EVENT_LABELS[event.type] ?? event.type)}
+                              </span>
+                              <time className="text-xs text-slate-400 whitespace-nowrap">
+                                {new Date(event.timestamp).toLocaleString("fr-FR")}
+                              </time>
+                            </div>
+                            {details && (
+                              <p className="text-xs text-slate-500 mt-0.5 break-words">{details}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Items */}
@@ -1175,7 +1366,16 @@ export function AdminOrders() {
                     <td className="px-4 py-3 font-bold text-slate-900 cursor-pointer" onClick={() => setDetailId(o.id)}>{o.order_number}</td>
                     <td className="px-4 py-3 cursor-pointer" onClick={() => setDetailId(o.id)}>
                       <p className="font-semibold text-slate-800">{o.guest_name ?? o.user?.name ?? "—"}</p>
-                      <p className="text-xs text-slate-400">{o.guest_phone}</p>
+                      {o.guest_phone && (
+                        <a
+                          href={telHref(o.guest_phone)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-brand-600 hover:text-brand-700 hover:underline"
+                          title="Appeler le client"
+                        >
+                          {o.guest_phone}
+                        </a>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-500 hidden md:table-cell cursor-pointer" onClick={() => setDetailId(o.id)}>
                       {o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : "—"}
@@ -1202,6 +1402,12 @@ export function AdminOrders() {
                             <IntigoStatusBadge order={o} />
                           ) : (
                             <span className="inline-block text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">Créé</span>
+                          )}
+                          {o.intigo_delivery_attempts != null && o.intigo_delivery_attempts > 0 && (
+                            <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                              <PhoneCall size={11} />
+                              {o.intigo_delivery_attempts} contact{o.intigo_delivery_attempts > 1 ? "s" : ""}
+                            </span>
                           )}
                         </div>
                       ) : o.intigo_last_error ? (

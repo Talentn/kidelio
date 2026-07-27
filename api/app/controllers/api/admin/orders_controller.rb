@@ -121,6 +121,20 @@ module Api
         render json: { errors: [ e.message ] }, status: :unprocessable_entity
       end
 
+      # Full Intigo parcel timeline (status changes, delivery/call attempts,
+      # scans, address/phone changes). Fetched on demand, not stored.
+      def intigo_history
+        order = Order.find(params[:id])
+        if order.intigo_nid.blank?
+          return render json: { errors: [ "Aucun colis Intigo pour cette commande" ] }, status: :unprocessable_entity
+        end
+
+        history = IntigoClient.new.parcel_history(order.intigo_nid)
+        render json: { nid: order.intigo_nid, history: history }
+      rescue IntigoClient::Error => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+      end
+
       # Re-delivery request (IVR) — only valid when Intigo status is 2100.
       # Returns fee_required: true when Intigo asks to accept a relance fee;
       # the UI confirms and retries with accept_fee=true.
@@ -217,6 +231,7 @@ module Api
           intigo_status: order.intigo_status,
           intigo_status_label: order.intigo_status_label,
           intigo_synced_at: order.intigo_synced_at,
+          intigo_delivery_attempts: order.intigo_delivery_attempts,
           intigo_can_open: order.intigo_can_open,
           intigo_is_exchange: order.intigo_is_exchange,
           user: order.user&.slice(:id, :name, :email)

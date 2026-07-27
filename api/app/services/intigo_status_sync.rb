@@ -35,7 +35,11 @@ class IntigoStatusSync
     raise Error, "Aucun colis Intigo pour cette commande" if order.intigo_nid.blank?
 
     parcel = @client.parcel(order.intigo_nid)
-    apply!(order, parcel["status"], parcel["status_label"])
+    # Intigo exposes the client-contact / delivery attempt count as
+    # delivery_attempts (V3 detail) or nbTentative (legacy list/summary).
+    attempts = parcel["delivery_attempts"]
+    attempts = parcel["nbTentative"] if attempts.nil?
+    apply!(order, parcel["status"], parcel["status_label"], attempts: attempts)
     order
   rescue IntigoClient::Error => e
     order.update_columns(intigo_last_error: e.message.truncate(2000), updated_at: Time.current)
@@ -75,13 +79,16 @@ class IntigoStatusSync
 
   private
 
-  def apply!(order, code, label)
+  # attempts is only available on the single-parcel endpoint; the bulk status
+  # endpoint doesn't return it, so nil means "keep the stored value".
+  def apply!(order, code, label, attempts: nil)
     code = code&.to_i
     order.assign_attributes(
       intigo_status: code,
       intigo_status_label: label,
       intigo_synced_at: Time.current
     )
+    order.intigo_delivery_attempts = attempts.to_i unless attempts.nil?
 
     new_status = local_status_for(code)
     current_rank = STATUS_RANK[order.status]

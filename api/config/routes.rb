@@ -94,6 +94,7 @@ Rails.application.routes.draw do
           post :send_to_intigo
           post :sync_intigo
           post :relance_intigo
+          get :intigo_history
           post :bordereau
           post :add_item
           patch :update_item
