@@ -12,12 +12,19 @@ import { useLivePoll } from '../../hooks/useLivePoll'
 
 const PERIODS = [
   { value: 'today', label: "Aujourd'hui" },
+  { value: 'yesterday', label: 'Hier' },
   { value: '7d', label: '7 jours' },
   { value: '30d', label: '30 jours' },
   { value: '90d', label: '90 jours' },
 ] as const
 
 type Period = (typeof PERIODS)[number]['value']
+type PeriodMode = Period | 'day' | 'range'
+
+/** Today's date (YYYY-MM-DD) in the shop's timezone. */
+function todayISO(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Tunis' })
+}
 
 type Analytics = {
   period: string
@@ -146,18 +153,31 @@ function activityDetail(ev: Analytics['recent_activity'][0]) {
 }
 
 export function AdminClientAnalytics() {
-  const [period, setPeriod] = useState<Period>('7d')
+  const [period, setPeriod] = useState<PeriodMode>('7d')
+  const [day, setDay] = useState(() => todayISO())
+  const [rangeFrom, setRangeFrom] = useState(() => todayISO())
+  const [rangeTo, setRangeTo] = useState(() => todayISO())
   const [data, setData] = useState<Analytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   const load = useCallback((silent = false) => {
+    let query: string
+    if (period === 'day') {
+      if (!day) return
+      query = `from=${day}&to=${day}`
+    } else if (period === 'range') {
+      if (!rangeFrom || !rangeTo) return
+      query = `from=${rangeFrom}&to=${rangeTo}`
+    } else {
+      query = `period=${period}`
+    }
     if (!silent) setLoading(true)
-    return apiAdmin<Analytics>(`/client-analytics?period=${period}`)
+    return apiAdmin<Analytics>(`/client-analytics?${query}`)
       .then((d) => { setData(d); setError(false) })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [period])
+  }, [period, day, rangeFrom, rangeTo])
 
   useEffect(() => { load() }, [load])
   useLivePoll(() => load(true), [load], { interval: import.meta.env.PROD ? 30_000 : 15_000 })
@@ -186,22 +206,72 @@ export function AdminClientAnalytics() {
       title="Comportement clients"
       subtitle={data ? `Période : ${formatAdminDate(data.from)} → ${formatAdminDate(data.to)} (${data.timezone})` : 'KPI boutique'}
       actions={
-        <div className="flex items-center gap-2 flex-wrap">
-          {PERIODS.map((p) => (
+        <div className="flex flex-col items-start lg:items-end gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {PERIODS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setPeriod(p.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  period === p.value ? 'bg-brand-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-300'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
             <button
-              key={p.value}
               type="button"
-              onClick={() => setPeriod(p.value)}
+              onClick={() => setPeriod('day')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                period === p.value ? 'bg-brand-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-300'
+                period === 'day' ? 'bg-brand-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-300'
               }`}
             >
-              {p.label}
+              Jour
             </button>
-          ))}
-          <button type="button" onClick={() => load()} className="btn-sm btn-secondary flex items-center gap-1.5 ml-1">
-            <RefreshCw size={14} /> Actualiser
-          </button>
+            <button
+              type="button"
+              onClick={() => setPeriod('range')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                period === 'range' ? 'bg-brand-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-brand-300'
+              }`}
+            >
+              Période
+            </button>
+            <button type="button" onClick={() => load()} className="btn-sm btn-secondary flex items-center gap-1.5 ml-1">
+              <RefreshCw size={14} /> Actualiser
+            </button>
+          </div>
+          {period === 'day' && (
+            <input
+              type="date"
+              value={day}
+              max={todayISO()}
+              onChange={(e) => setDay(e.target.value)}
+              className="input py-1.5 text-sm w-auto"
+            />
+          )}
+          {period === 'range' && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <span className="font-semibold">Du</span>
+              <input
+                type="date"
+                value={rangeFrom}
+                max={rangeTo || todayISO()}
+                onChange={(e) => setRangeFrom(e.target.value)}
+                className="input py-1.5 text-sm w-auto"
+              />
+              <span className="font-semibold">au</span>
+              <input
+                type="date"
+                value={rangeTo}
+                min={rangeFrom || undefined}
+                max={todayISO()}
+                onChange={(e) => setRangeTo(e.target.value)}
+                className="input py-1.5 text-sm w-auto"
+              />
+            </div>
+          )}
         </div>
       }
     >

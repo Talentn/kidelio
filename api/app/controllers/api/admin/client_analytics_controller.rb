@@ -2,15 +2,26 @@ module Api
   module Admin
     class ClientAnalyticsController < BaseController
       PERIODS = {
-        "today" => -> { [ Time.current.beginning_of_day, Time.current.end_of_day ] },
-        "7d"    => -> { [ 7.days.ago.beginning_of_day, Time.current.end_of_day ] },
-        "30d"   => -> { [ 30.days.ago.beginning_of_day, Time.current.end_of_day ] },
-        "90d"   => -> { [ 90.days.ago.beginning_of_day, Time.current.end_of_day ] }
+        "today"     => -> { [ Time.current.beginning_of_day, Time.current.end_of_day ] },
+        "yesterday" => -> { [ 1.day.ago.beginning_of_day, 1.day.ago.end_of_day ] },
+        "7d"        => -> { [ 7.days.ago.beginning_of_day, Time.current.end_of_day ] },
+        "30d"       => -> { [ 30.days.ago.beginning_of_day, Time.current.end_of_day ] },
+        "90d"       => -> { [ 90.days.ago.beginning_of_day, Time.current.end_of_day ] }
       }.freeze
 
       def show
-        period = PERIODS.key?(params[:period]) ? params[:period] : "7d"
-        from, to = PERIODS[period].call
+        custom_from = parse_date(params[:from])
+        custom_to = parse_date(params[:to])
+
+        if custom_from && custom_to
+          custom_from, custom_to = custom_to, custom_from if custom_from > custom_to
+          period = "custom"
+          from = custom_from.beginning_of_day
+          to = custom_to.end_of_day
+        else
+          period = PERIODS.key?(params[:period]) ? params[:period] : "7d"
+          from, to = PERIODS[period].call
+        end
         duration = to - from
         prev_to = from - 1.second
         prev_from = prev_to - duration
@@ -69,6 +80,14 @@ module Api
       end
 
       private
+
+      def parse_date(value)
+        return nil if value.blank?
+
+        Date.iso8601(value.to_s)
+      rescue ArgumentError
+        nil
+      end
 
       def average_dwell_seconds(scope)
         durations = scope.filter_map do |e|
